@@ -1,0 +1,81 @@
+{
+  "app": {
+    "name": "VeriFY",
+    "product": "Document verification",
+    "tagline": "Inbox to discrepancy report"
+  },
+  "nav": {
+    "queue": "Queue",
+    "dashboard": "Overview",
+    "submit": "Submit email",
+    "audit": "Audit"
+  },
+  "queue": {
+    "title": "Verification queue",
+    "subtitle": "Work the cases that need a person. Everything else has already been decided.",
+    "search": "Search subject, sender, or id",
+    "allStatuses": "All statuses",
+    "empty": "No cases yet. Replay the inbox or submit an email.",
+    "replay": "Replay sample inbox",
+    "replaying": "Reading inbox…",
+    "poll": "Poll mailbox",
+    "polling": "Checking Gmail…",
+    "confirmed": "Confirmed"
+  },
+  "status": {
+    "OK": "Clear",
+    "MISMATCH": "Mismatch",
+    "NEEDS_REVIEW": "Needs review"
+  },
+  "category": {
+    "BL_COMPARISON": "BL comparison",
+    "SI_REQUEST": "SI request",
+    "INVOICE_QUERY": "Invoice query",
+    "GENERAL": "General",
+    "SPAM": "Spam"
+  },
+  "case": {
+    "back": "Back to queue",
+    "fields": "Seven-field comparison",
+    "si": "Shipping instruction",
+    "bl": "Draft bill of lading",
+    "confirm": "Confirm",
+    "confirming": "Confirming…",
+    "confirmed": "Confirmed",
+    "confirmedBy": "Accepted by {{name}} at {{time}}",
+    "correct": "Correct",
+    "retry": "Retry",
+    "retrying": "Retrying…",
+    "note": "Reviewer note (optional)",
+    "noteHint": "Why this verdict is accepted",
+    "email": "Email",
+    "noCompare": "This message was classified only. No document comparison was required."
+  },
+  "dashboard": {
+    "title": "Operations overview",
+    "total": "Cases",
+    "review": "Waiting on a person",
+    "mismatch": "Mismatches",
+    "clear": "Clear",
+    "confirmed": "Confirmed"
+  },
+  "audit": {
+    "title": "Audit log",
+    "subtitle": "Every Confirm and Retry is recorded. Scoreboard fields are not rewritten.",
+    "empty": "No review actions yet.",
+    "when": "When",
+    "case": "Case",
+    "action": "Action",
+    "by": "By"
+  },
+  "submit": {
+    "title": "Submit an email",
+    "subtitle": "Use this when organizers send mail this system has never seen.",
+    "sender": "From",
+    "subject": "Subject",
+    "body": "Body",
+    "paths": "Attachment paths (one per line, relative to the data directory)",
+    "send": "Run verification",
+    "sending": "Verifying…"
+  }
+}

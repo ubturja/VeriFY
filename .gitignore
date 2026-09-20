@@ -1,0 +1,60 @@
+# Secrets and local config
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+credentials.json
+service-account*.json
+
+# Dataset (never commit inbox or ground truth)
+data/
+*.msg
+sdoc-hackathon-bundle/
+sdoc-hackathon-docker/
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+dist/
+build/
+*.egg-info/
+.python-version
+
+# Node
+node_modules/
+console/dist/
+console/.vite/
+*.tsbuildinfo
+
+# Terraform
+infra/.terraform/
+infra/*.tfstate
+infra/*.tfstate.*
+infra/tfplan
+infra/*.tfvars
+!infra/*.tfvars.example
+crash.log
+
+# OS / editors
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+
+# Eval output
+artifacts/
+submission.json
+eval-report.json
+
+# Logs
+*.log

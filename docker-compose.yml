@@ -1,0 +1,47 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: verify
+      POSTGRES_PASSWORD: verify
+      POSTGRES_DB: verify
+    ports:
+      - "5432:5432"
+    volumes:
+      - verify_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U verify -d verify"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  azurite:
+    image: mcr.microsoft.com/azure-storage/azurite
+    command: azurite --blobHost 0.0.0.0 --queueHost 0.0.0.0 --tableHost 0.0.0.0
+    ports:
+      - "10000:10000"
+      - "10001:10001"
+      - "10002:10002"
+
+  api:
+    build:
+      context: ./backend
+    env_file:
+      - .env
+    environment:
+      VERIFY_ENV: docker
+      VERIFY_DATABASE_URL: postgresql+asyncpg://verify:verify@postgres:5432/verify
+      VERIFY_DATA_DIR: /data
+      VERIFY_STATE_PATH: /var/lib/verify/state.json
+    volumes:
+      - ${VERIFY_DATA_DIR:-../../sdoc-hackathon-bundle}:/data:ro
+      - verify_state:/var/lib/verify
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  verify_pg:
+  verify_state:

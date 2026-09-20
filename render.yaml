@@ -1,0 +1,48 @@
+services:
+  - type: web
+    name: verify-api
+    runtime: docker
+    plan: free
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    healthCheckPath: /health
+    envVars:
+      - key: VERIFY_ENV
+        value: cloud
+      - key: VERIFY_API_HOST
+        value: 0.0.0.0
+      - key: VERIFY_BLOB_BACKEND
+        value: local
+      - key: VERIFY_QUEUE_BACKEND
+        value: inmemory
+      - key: VERIFY_LLM_PRIMARY
+        value: gemini
+      - key: VERIFY_LLM_FALLBACK
+        value: groq
+      - key: VERIFY_MAIL_SOURCE
+        value: hackathon
+      - key: VERIFY_STATE_PATH
+        value: /tmp/verify-state.json
+      - key: IMAP_HOST
+        value: imap.gmail.com
+      - key: IMAP_USERNAME
+        value: wesuffertogether22@gmail.com
+      - key: VERIFY_CORS_ORIGINS
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: IMAP_APP_PASSWORD
+        sync: false
+
+  - type: web
+    name: verify-console
+    runtime: static
+    plan: free
+    rootDir: console
+    buildCommand: npm ci && npm run build
+    staticPublishPath: dist
+    envVars:
+      - key: VITE_API_URL
+        sync: false
