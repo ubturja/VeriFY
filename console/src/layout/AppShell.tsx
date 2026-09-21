@@ -33,8 +33,12 @@ export function AppShell() {
   }, [session, setSession]);
 
   async function onRole(next: "supervisor" | "reviewer" | "auditor") {
-    const updated = await api.setRole(next);
-    if (session) setSession({ ...session, email: updated.email, role: updated.role });
+    try {
+      const updated = await api.setRole(next);
+      if (session) setSession({ ...session, email: updated.email, role: updated.role });
+    } catch {
+      /* keep the current role if the server rejects the switch */
+    }
   }
 
   async function onSignOut() {

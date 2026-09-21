@@ -103,6 +103,20 @@ a {
   margin-bottom: 28px;
 }
 
+.page-head.inset {
+  margin-top: 16px;
+}
+
+.section-title {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0 0 8px;
+}
+
+.section-title.spaced {
+  margin-top: 32px;
+}
+
 .page-head h1 {
   margin: 0 0 8px;
   font-size: 28px;
@@ -233,6 +247,10 @@ a {
   color: var(--warn);
 }
 
+.pill.spaced {
+  margin-left: 8px;
+}
+
 .cards {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
@@ -318,6 +336,15 @@ a {
   min-height: 140px;
 }
 
+.field.narrow,
+.field.note {
+  max-width: 420px;
+}
+
+.field.note {
+  margin-bottom: 24px;
+}
+
 .empty {
   padding: 48px 20px;
   text-align: center;
@@ -390,10 +417,26 @@ a {
   box-shadow: var(--shadow);
 }
 
+.login-card .brand {
+  margin-bottom: 20px;
+}
+
+.login-card .brand strong {
+  color: var(--ink);
+}
+
+.login-card .brand span {
+  color: var(--ink-soft);
+}
+
 .login-card h1 {
   margin: 0 0 6px;
   font-size: 22px;
   font-weight: 600;
+}
+
+.login-form {
+  margin-top: 20px;
 }
 
 .login-card .muted.small {
@@ -431,6 +474,33 @@ a {
   color: var(--sidebar-text);
   font-weight: 500;
   overflow-wrap: anywhere;
+}
+
+.mailbox-card .field select {
+  width: 100%;
+  background: var(--surface);
+  color: var(--ink);
+}
+
+.btn-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.compare-row {
+  display: contents;
+}
+
+.email-body {
+  white-space: pre-wrap;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 16px 18px;
+  margin: 0;
+  font-family: inherit;
+  font-size: 14px;
 }
 
 .btn.small {
@@ -485,12 +555,12 @@ a {
     grid-template-columns: 1fr;
   }
   .sidebar {
-    flex-direction: row;
-    align-items: center;
-    justify-content: space-between;
+    flex-direction: column;
+    align-items: stretch;
   }
   .nav {
     flex-direction: row;
+    flex-wrap: wrap;
   }
   .cards {
     grid-template-columns: 1fr 1fr;

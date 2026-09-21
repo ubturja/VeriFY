@@ -151,7 +151,7 @@ export function CasePage() {
       <Link to="/" className="muted">
         ← {t("case.back")}
       </Link>
-      <div className="page-head" style={{ marginTop: 16 }}>
+      <div className="page-head inset">
         <h1>{row.subject || row.email_id}</h1>
         <p>
           {row.from} · {t(`category.${row.result.category}`)}
@@ -206,7 +206,7 @@ export function CasePage() {
             </span>
           </div>
           <textarea readOnly value={reply.body} />
-          <div>
+          <div className="btn-row">
             <button
               className="btn secondary small"
               type="button"
@@ -216,12 +216,7 @@ export function CasePage() {
             >
               {t("case.copyReply")}
             </button>
-            <button
-              className="btn secondary small"
-              type="button"
-              onClick={() => setReply(null)}
-              style={{ marginLeft: 8 }}
-            >
+            <button className="btn secondary small" type="button" onClick={() => setReply(null)}>
               {t("case.dismissReply")}
             </button>
           </div>
@@ -229,7 +224,7 @@ export function CasePage() {
       ) : null}
       {related && related.timeline.length ? (
         <section className="related">
-          <h2 style={{ fontSize: 16, fontWeight: 600 }}>
+          <h2 className="section-title">
             {t("case.timeline")}{" "}
             <span className="muted small">({related.shipment_id})</span>
           </h2>
@@ -256,7 +251,7 @@ export function CasePage() {
       ) : null}
       {related && related.matches.length ? (
         <section className="related">
-          <h2 style={{ fontSize: 16, fontWeight: 600 }}>
+          <h2 className="section-title">
             {t("case.related")}{" "}
             <span className="muted small">({related.shipment_id})</span>
           </h2>
@@ -346,7 +341,7 @@ export function CasePage() {
               ))}
             </fieldset>
           ) : null}
-          <label className="field" style={{ maxWidth: 420 }}>
+          <label className="field narrow">
             <span className="muted">{t("case.note")}</span>
             <input
               value={note}
@@ -362,7 +357,7 @@ export function CasePage() {
           </div>
         </form>
       ) : !reviewed ? (
-        <label className="field" style={{ maxWidth: 420, marginBottom: 24 }}>
+        <label className="field note">
           <span className="muted">{t("case.note")}</span>
           <input
             value={note}
@@ -374,7 +369,7 @@ export function CasePage() {
       ) : null}
       {row.attachments.length > 0 ? (
         <>
-          <h2 style={{ fontSize: 16, fontWeight: 600 }}>{t("case.attachments")}</h2>
+          <h2 className="section-title">{t("case.attachments")}</h2>
           <ul className="attachment-list">
             {row.attachments.map((item) => (
               <li key={`${item.path}-${item.filename}`}>{item.filename}</li>
@@ -390,14 +385,14 @@ export function CasePage() {
         </p>
       ) : (
         <>
-          <h2 style={{ fontSize: 16, fontWeight: 600 }}>{t("case.fields")}</h2>
+          <h2 className="section-title">{t("case.fields")}</h2>
           <div className="compare">
             <div className="head">Field</div>
             <div className="head">{t("case.si")}</div>
             <div className="head">{t("case.bl")}</div>
             <div className="head">Result</div>
             {comparisons.map((item) => (
-              <div key={item.field} style={{ display: "contents" }}>
+              <div key={item.field} className="compare-row">
                 <div>{item.field.replaceAll("_", " ")}</div>
                 <div>
                   <div className="cell-value">{item.si_value ?? "-"}</div>
@@ -418,18 +413,8 @@ export function CasePage() {
           </div>
         </>
       )}
-      <h2 style={{ fontSize: 16, fontWeight: 600, marginTop: 32 }}>{t("case.email")}</h2>
-      <pre
-        style={{
-          whiteSpace: "pre-wrap",
-          background: "var(--surface)",
-          border: "1px solid var(--line)",
-          borderRadius: 12,
-          padding: 16,
-        }}
-      >
-        {row.body}
-      </pre>
+      <h2 className="section-title spaced">{t("case.email")}</h2>
+      <pre className="email-body">{row.body}</pre>
     </section>
   );
 }

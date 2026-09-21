@@ -23,12 +23,17 @@ export function PolicyPage() {
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
-    await api.savePolicy({
-      weight_tolerance_kg: tolerance,
-      mandatory_fields: mandatory,
-      fields_may_differ: mayDiffer,
-    });
-    setMessage(t("policy.saved"));
+    setMessage(null);
+    try {
+      await api.savePolicy({
+        weight_tolerance_kg: tolerance,
+        mandatory_fields: mandatory,
+        fields_may_differ: mayDiffer,
+      });
+      setMessage(t("policy.saved"));
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : "Save failed");
+    }
   }
 
   return (

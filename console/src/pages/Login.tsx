@@ -31,13 +31,13 @@ export function LoginPage() {
   return (
     <div className="login-shell">
       <section className="login-card">
-        <div className="brand" style={{ marginBottom: 20 }}>
+        <div className="brand">
           <strong>{t("app.name")}</strong>
           <span>{t("app.product")}</span>
         </div>
         <h1>{t("login.title")}</h1>
         <p className="muted">{t("login.subtitle")}</p>
-        <form className="stack" onSubmit={(e) => void onSubmit(e)} style={{ marginTop: 20 }}>
+        <form className="stack login-form" onSubmit={(e) => void onSubmit(e)}>
           <label className="field">
             <span>{t("login.email")}</span>
             <input

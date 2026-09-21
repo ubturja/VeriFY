@@ -42,7 +42,7 @@ export function DeadLettersPage() {
       </div>
       {error ? <p className="muted">{error}</p> : null}
       {rows.length === 0 ? (
-        <p className="empty">{t("dead.empty")}</p>
+        <div className="empty">{t("dead.empty")}</div>
       ) : (
         <table className="table">
           <thead>
