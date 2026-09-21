@@ -15,7 +15,6 @@ export function AppShell() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
 
-  // Override labels for hardcoded translations since they might be missing in locales
   const getLabel = (id: string, def: string) => {
     if (id === "Profile") return "Profile";
     if (def === "nav.queue") return "Email Queue";
@@ -124,7 +123,6 @@ export function AppShell() {
 
       {/* Main content Container */}
       <div className="flex-1 h-full relative overflow-y-auto">
-        {/* Dynamic outlet routing. Key ensures animation replays every route change */}
         <main className={`h-full relative z-10 ${isWelcome ? "" : "p-6 md:p-8 pt-20"}`}>
           <Outlet key={location.pathname} />
         </main>
