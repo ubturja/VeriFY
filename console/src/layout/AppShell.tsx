@@ -1,13 +1,36 @@
-import { useEffect } from "react";
-import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { api } from "../api";
 import { useAuth } from "../auth";
+
+interface NavItem {
+  id: string;
+  label: string;
+  icon: string;
+}
+
+const NAV_ITEMS: NavItem[] = [
+  { id: "/",        label: "Home",     icon: "⬡" },
+  { id: "/queue",   label: "Queue",    icon: "📨" },
+  { id: "/overview",label: "Overview", icon: "📊" },
+  { id: "/submit",  label: "Submit",   icon: "📤" },
+  { id: "/audit",   label: "Audit",    icon: "📋" },
+  { id: "/profile", label: "Profile",  icon: "👤" },
+];
+
+function getLabel(_key: string, fallback: string): string {
+  return fallback;
+}
 
 export function AppShell() {
   const { t } = useTranslation();
   const { session, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  const isWelcome = location.pathname === "/";
 
   useEffect(() => {
     function onUnauthorized() {
@@ -76,7 +99,7 @@ export function AppShell() {
 
           <nav className="flex-1 py-4 space-y-1 px-3">
             {NAV_ITEMS.map((item) => {
-              const active = location.pathname.startsWith(item.id);
+              const active = location.pathname === item.id || (item.id !== "/" && location.pathname.startsWith(item.id));
               return (
                 <NavLink
                   key={item.id}
@@ -100,6 +123,23 @@ export function AppShell() {
               );
             })}
           </nav>
+
+          {/* Sign out button */}
+          <div className="px-3 py-4 border-t border-[rgba(142,59,49,0.2)]">
+            <button
+              onClick={() => void onSignOut()}
+              className="w-full flex items-center gap-3 px-3 py-3 rounded-lg text-sm transition-all duration-200 text-left cursor-pointer"
+              style={{ color: "#8a7470", borderLeft: "2px solid transparent" }}
+            >
+              <span className="text-base w-5 text-center">🚪</span>
+              <span className="font-medium">{t("nav.signOut", "Sign Out")}</span>
+            </button>
+            {session && (
+              <p className="text-xs font-mono text-[#8a7470] px-3 mt-1 truncate">
+                {session.email ?? ""}
+              </p>
+            )}
+          </div>
         </div>
       </div>
 

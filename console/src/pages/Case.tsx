@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { api, type CaseRow, COMPARE_FIELDS, } from "../api";
+import { api, type CaseRow } from "../api";
 
 type Comparison = NonNullable<CaseRow["result"]["comparisons"]>[number];
 type FieldEvidence = NonNullable<Comparison["si_evidence"]>;

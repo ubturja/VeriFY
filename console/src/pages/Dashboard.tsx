@@ -33,7 +33,6 @@ export function DashboardPage() {
   const total = metrics?.total ?? 0;
   const review = by.NEEDS_REVIEW ?? 0;
   const mismatch = by.MISMATCH ?? 0;
-  const ok = by.OK ?? 0;
   const confirmed = metrics?.confirmed ?? 0;
 
   return (
