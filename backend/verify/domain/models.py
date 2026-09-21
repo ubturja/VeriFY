@@ -45,6 +45,7 @@ class ExtractedField(BaseModel):
     confidence: float = 0.0
     evidence: Evidence | None = None
     blank_token: bool = False
+    from_llm: bool = False
 
 
 class ExtractedDocument(BaseModel):
@@ -63,6 +64,8 @@ class FieldComparison(BaseModel):
     match: bool | None = None
     confidence: float = 0.0
     note: str | None = None
+    si_evidence: Evidence | None = None
+    bl_evidence: Evidence | None = None
 
 
 class Classification(BaseModel):
@@ -71,6 +74,13 @@ class Classification(BaseModel):
     confidence: float
     decided_by: DecidedBy
     rationale: str = ""
+
+
+class UsageSummaryModel(BaseModel):
+    llm_calls: int = 0
+    input_tokens: int = 0
+    output_tokens: int = 0
+    models: list[str] = Field(default_factory=list)
 
 
 class PipelineResult(BaseModel):
@@ -85,6 +95,13 @@ class PipelineResult(BaseModel):
     notes: list[str] = Field(default_factory=list)
     si: ExtractedDocument | None = None
     bl: ExtractedDocument | None = None
+    usage: UsageSummaryModel = Field(default_factory=UsageSummaryModel)
+    latency_ms: int = 0
+    prompt_version: str = ""
+    model_version: str = ""
+    shipment_ref: str | None = None
+    pending_draft: bool = False
+    paired_with: str | None = None
 
     def to_submission(self) -> dict[str, Any]:
         return {

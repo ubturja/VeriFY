@@ -1,0 +1,74 @@
+{
+  "adv_001_zh_ok": {
+    "category": "BL_COMPARISON",
+    "status": "OK",
+    "has_defect": false,
+    "defect_fields": []
+  },
+  "adv_002_zh_mismatch": {
+    "category": "BL_COMPARISON",
+    "status": "MISMATCH",
+    "has_defect": true,
+    "defect_fields": ["consignee"]
+  },
+  "adv_003_ms_ok": {
+    "category": "BL_COMPARISON",
+    "status": "OK",
+    "has_defect": false,
+    "defect_fields": []
+  },
+  "adv_004_ms_mismatch": {
+    "category": "BL_COMPARISON",
+    "status": "MISMATCH",
+    "has_defect": true,
+    "defect_fields": ["gross_weight_kg"]
+  },
+  "adv_005_zh_si_request": {
+    "category": "SI_REQUEST",
+    "status": "OK",
+    "has_defect": false,
+    "defect_fields": []
+  },
+  "adv_006_ms_invoice": {
+    "category": "INVOICE_QUERY",
+    "status": "OK",
+    "has_defect": false,
+    "defect_fields": []
+  },
+  "adv_007_ms_spam": {
+    "category": "SPAM",
+    "status": "OK",
+    "has_defect": false,
+    "defect_fields": []
+  },
+  "adv_008_zh_general": {
+    "category": "GENERAL",
+    "status": "OK",
+    "has_defect": false,
+    "defect_fields": []
+  },
+  "adv_009_renamed": {
+    "category": "BL_COMPARISON",
+    "status": "OK",
+    "has_defect": false,
+    "defect_fields": []
+  },
+  "adv_010_swapped": {
+    "category": "BL_COMPARISON",
+    "status": "OK",
+    "has_defect": false,
+    "defect_fields": []
+  },
+  "adv_011_locode": {
+    "category": "BL_COMPARISON",
+    "status": "OK",
+    "has_defect": false,
+    "defect_fields": []
+  },
+  "adv_012_weight_round": {
+    "category": "BL_COMPARISON",
+    "status": "MISMATCH",
+    "has_defect": true,
+    "defect_fields": ["gross_weight_kg"]
+  }
+}

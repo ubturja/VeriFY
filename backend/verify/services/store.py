@@ -1,11 +1,16 @@
 from __future__ import annotations
 
 import json
+import sqlite3
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from verify.domain.enums import COMPARE_FIELDS, Category, DecidedBy, ReviewReason, Status
 from verify.domain.models import EmailMessage, PipelineResult
+
+_SQLITE_SUFFIXES = {".db", ".sqlite", ".sqlite3"}
+_ALLOWED_DEFECTS = set(COMPARE_FIELDS)
 
 
 def _now() -> str:
@@ -36,6 +41,9 @@ class CaseStore:
             "source": email.source,
             "result": result.model_dump(mode="json"),
             "review": None if reset_review else previous.get("review"),
+            "processed_at": previous.get("processed_at") or _now(),
+            "updated_at": _now(),
+            "webhook": None if reset_review else previous.get("webhook"),
         }
         self._save()
 
@@ -43,6 +51,9 @@ class CaseStore:
         row = self._items.get(email_id)
         if not row:
             return None
+        existing = row.get("review") or {}
+        if existing.get("action") == "correct":
+            raise ValueError("Case already corrected")
         review = {
             "action": "confirm",
             "at": _now(),
@@ -52,7 +63,91 @@ class CaseStore:
             "accepted_category": row["result"]["category"],
         }
         row["review"] = review
-        self._log(email_id, "confirm", reviewer=reviewer, note=note, at=review["at"])
+        self._log(
+            email_id,
+            "confirm",
+            reviewer=reviewer,
+            note=note,
+            at=review["at"],
+            model_version=row["result"].get("model_version"),
+            prompt_version=row["result"].get("prompt_version"),
+        )
+        self._save()
+        return row
+
+    def correct(
+        self,
+        email_id: str,
+        *,
+        reviewer: str,
+        category: str | None = None,
+        status: str | None = None,
+        review_reason: str | None = None,
+        defect_fields: list[str] | None = None,
+        has_defect: bool | None = None,
+        note: str | None = None,
+    ) -> dict[str, Any] | None:
+        row = self._items.get(email_id)
+        if not row:
+            return None
+        result = dict(row["result"])
+        previous = {
+            "category": result["category"],
+            "status": result["status"],
+            "has_defect": result.get("has_defect"),
+            "defect_fields": list(result.get("defect_fields") or []),
+            "review_reason": result.get("review_reason"),
+        }
+        if category is not None:
+            result["category"] = Category(category).value
+        if status is not None:
+            result["status"] = Status(status).value
+        if defect_fields is not None:
+            unknown = [field for field in defect_fields if field not in _ALLOWED_DEFECTS]
+            if unknown:
+                raise ValueError(f"Unknown defect fields: {', '.join(unknown)}")
+            result["defect_fields"] = list(dict.fromkeys(defect_fields))
+            result["has_defect"] = bool(result["defect_fields"])
+        if has_defect is not None:
+            result["has_defect"] = has_defect
+            if not has_defect:
+                result["defect_fields"] = []
+        if result["status"] == Status.OK:
+            result["has_defect"] = False
+            result["defect_fields"] = []
+            result["review_reason"] = None
+        elif result["status"] == Status.MISMATCH:
+            if not result.get("defect_fields"):
+                raise ValueError("MISMATCH requires at least one defect field.")
+            result["has_defect"] = True
+            if review_reason is None:
+                result["review_reason"] = None
+        elif result["status"] == Status.NEEDS_REVIEW:
+            reason = review_reason if review_reason is not None else result.get("review_reason")
+            result["review_reason"] = ReviewReason(reason or ReviewReason.MISSING_VALUE).value
+        if review_reason is not None and result["status"] != Status.OK:
+            result["review_reason"] = ReviewReason(review_reason).value
+        result["decided_by"] = DecidedBy.HUMAN.value
+        row["result"] = result
+        review = {
+            "action": "correct",
+            "at": _now(),
+            "by": reviewer,
+            "note": note or None,
+            "previous": previous,
+            "accepted_status": result["status"],
+            "accepted_category": result["category"],
+        }
+        row["review"] = review
+        self._log(
+            email_id,
+            "correct",
+            reviewer=reviewer,
+            note=note,
+            at=review["at"],
+            model_version=previous and row["result"].get("model_version"),
+            prompt_version=row["result"].get("prompt_version"),
+        )
         self._save()
         return row
 
@@ -76,8 +171,26 @@ class CaseStore:
         *,
         reviewer: str,
         note: str | None = None,
+        model_version: str | None = None,
+        prompt_version: str | None = None,
     ) -> None:
-        self._log(email_id, action, reviewer=reviewer, note=note)
+        row = self._items.get(email_id) or {}
+        result = row.get("result") or {}
+        self._log(
+            email_id,
+            action,
+            reviewer=reviewer,
+            note=note,
+            model_version=model_version if model_version is not None else result.get("model_version"),
+            prompt_version=prompt_version if prompt_version is not None else result.get("prompt_version"),
+        )
+        self._save()
+
+    def set_webhook(self, email_id: str, record: dict[str, Any]) -> None:
+        row = self._items.get(email_id)
+        if not row:
+            return
+        row["webhook"] = record
         self._save()
 
     def _log(
@@ -88,6 +201,8 @@ class CaseStore:
         reviewer: str,
         note: str | None = None,
         at: str | None = None,
+        model_version: str | None = None,
+        prompt_version: str | None = None,
     ) -> None:
         self._audit.append(
             {
@@ -96,6 +211,8 @@ class CaseStore:
                 "action": action,
                 "by": reviewer,
                 "note": note or None,
+                "model_version": model_version or None,
+                "prompt_version": prompt_version or None,
             }
         )
 
@@ -124,32 +241,88 @@ class CaseStore:
         by_status: dict[str, int] = {}
         by_category: dict[str, int] = {}
         confirmed = 0
+        corrected = 0
+        automated = 0
+        llm_calls = 0
+        input_tokens = 0
+        output_tokens = 0
+        latencies: list[int] = []
+        trend: dict[str, dict[str, int]] = {}
         for row in rows:
-            status = row["result"]["status"]
-            category = row["result"]["category"]
+            result = row["result"]
+            status = result["status"]
+            category = result["category"]
             by_status[status] = by_status.get(status, 0) + 1
             by_category[category] = by_category.get(category, 0) + 1
-            if row.get("review") and row["review"].get("action") == "confirm":
+            action = (row.get("review") or {}).get("action")
+            if action == "confirm":
                 confirmed += 1
+            elif action == "correct":
+                corrected += 1
+            touched = action in {"confirm", "correct"} or result.get("decided_by") == "human"
+            waiting = status == "NEEDS_REVIEW" and not touched
+            if not touched and not waiting:
+                automated += 1
+            usage = result.get("usage") or {}
+            llm_calls += int(usage.get("llm_calls") or 0)
+            input_tokens += int(usage.get("input_tokens") or 0)
+            output_tokens += int(usage.get("output_tokens") or 0)
+            if result.get("latency_ms"):
+                latencies.append(int(result["latency_ms"]))
+            day = (row.get("processed_at") or "")[:10] or "unknown"
+            bucket = trend.setdefault(day, {"cases": 0, "automated": 0, "llm_calls": 0})
+            bucket["cases"] += 1
+            bucket["llm_calls"] += int(usage.get("llm_calls") or 0)
+            if not touched and not waiting:
+                bucket["automated"] += 1
+        total = len(rows)
+        cost = (input_tokens * 0.10 + output_tokens * 0.40) / 1_000_000
+        latencies.sort()
+        median = latencies[len(latencies) // 2] if latencies else 0
         return {
-            "total": len(rows),
+            "total": total,
             "by_status": by_status,
             "by_category": by_category,
             "confirmed": confirmed,
+            "corrected": corrected,
+            "automation_rate": round(automated / total, 4) if total else 0.0,
+            "llm_calls_per_100": round(100 * llm_calls / total, 2) if total else 0.0,
+            "estimated_cost_per_1000_usd": round(1000 * cost / total, 4) if total else 0.0,
+            "median_latency_ms": median,
+            "trend": [{"day": day, **bucket} for day, bucket in sorted(trend.items())],
         }
+
+    def _use_sqlite(self) -> bool:
+        return bool(self.path and self.path.suffix.lower() in _SQLITE_SUFFIXES)
+
+    def _payload(self) -> dict[str, Any]:
+        return {"cases": self._items, "audit": self._audit}
+
+    def _apply_payload(self, payload: dict[str, Any]) -> None:
+        self._items = payload.get("cases") or {}
+        self._audit = payload.get("audit") or []
 
     def _load(self) -> None:
         if not self.path or not self.path.is_file():
             return
-        payload = json.loads(self.path.read_text(encoding="utf-8"))
-        self._items = payload.get("cases") or {}
-        self._audit = payload.get("audit") or []
+        if self._use_sqlite():
+            with sqlite3.connect(self.path) as conn:
+                conn.execute("CREATE TABLE IF NOT EXISTS state (id INTEGER PRIMARY KEY, payload TEXT NOT NULL)")
+                row = conn.execute("SELECT payload FROM state WHERE id = 1").fetchone()
+            if row:
+                self._apply_payload(json.loads(row[0]))
+            return
+        self._apply_payload(json.loads(self.path.read_text(encoding="utf-8")))
 
     def _save(self) -> None:
         if not self.path:
             return
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        self.path.write_text(
-            json.dumps({"cases": self._items, "audit": self._audit}, indent=2),
-            encoding="utf-8",
-        )
+        encoded = json.dumps(self._payload(), indent=2)
+        if self._use_sqlite():
+            with sqlite3.connect(self.path) as conn:
+                conn.execute("CREATE TABLE IF NOT EXISTS state (id INTEGER PRIMARY KEY, payload TEXT NOT NULL)")
+                conn.execute("INSERT OR REPLACE INTO state (id, payload) VALUES (1, ?)", (encoded,))
+                conn.commit()
+            return
+        self.path.write_text(encoded, encoding="utf-8")

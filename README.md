@@ -116,7 +116,9 @@ This reads every email under `VERIFY_DATA_DIR`, writes `artifacts/submission.jso
 
 You can also drop a new email into the console with **Submit email**. Organizers can test with messages this repository has never seen.
 
-On a case page, **Confirm** accepts the current verdict. It does not change category, status, or defect fields. **Retry** re-runs the pipeline and clears that stamp. Both actions are written to the Audit log. **Poll mailbox** on the queue reads `wesuffertogether22@gmail.com` over IMAP once `IMAP_APP_PASSWORD` is set.
+On a case page, **Confirm** accepts the current verdict. It does not change category, status, or defect fields. **Correct** is the human override: it rewrites those scoreboard fields and sets `decided_by` to `human`. **Retry** re-runs the pipeline and clears that stamp. Both actions are written to the Audit log. **Poll mailbox** on the queue reads `wesuffertogether22@gmail.com` over IMAP once `IMAP_APP_PASSWORD` is set. The API also polls that mailbox in the background every `IMAP_POLL_SECONDS`.
+
+**Submit email** accepts uploaded files (base64) as well as paths under `VERIFY_DATA_DIR`, so organizers can test with mail this repository has never seen.
 
 ## Cloud (no Azure credits)
 

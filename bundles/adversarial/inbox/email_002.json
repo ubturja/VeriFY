@@ -1,0 +1,10 @@
+{
+  "email_id": "adv_002_zh_mismatch",
+  "from": "docs@carrier.cn",
+  "subject": "draft BL 请核对，收货人可能有误",
+  "body": "请对比 SI 与 draft BL，我们怀疑 consignee 有出入。",
+  "attachments": [
+    "attachments/adv_002_SI.txt",
+    "attachments/adv_002_BL.txt"
+  ]
+}

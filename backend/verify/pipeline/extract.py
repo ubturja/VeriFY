@@ -122,23 +122,27 @@ def _from_docx(filename: str, payload: bytes) -> ExtractedDocument:
 def _from_pdf(filename: str, payload: bytes) -> ExtractedDocument:
     import pdfplumber
 
+    from verify.pipeline.ocr import ocr_pdf
+
     try:
         with pdfplumber.open(io.BytesIO(payload)) as pdf:
             pages = [page.extract_text() or "" for page in pdf.pages]
     except Exception:
-        return ExtractedDocument(
-            kind=DocumentKind.UNREADABLE,
-            attachment=filename,
-            unreadable=True,
-        )
+        pages = []
     text = "\n".join(pages)
+    ocr_note: str | None = None
     if not collapse_ws(text):
-        return ExtractedDocument(
-            kind=DocumentKind.UNREADABLE,
-            attachment=filename,
-            unreadable=True,
-            raw_text="",
-        )
+        outcome = ocr_pdf(payload)
+        if outcome.ok:
+            text = outcome.text
+            ocr_note = f"ocr:{outcome.pages}"
+        else:
+            return ExtractedDocument(
+                kind=DocumentKind.UNREADABLE,
+                attachment=filename,
+                unreadable=True,
+                raw_text="",
+            )
     doc = extract_from_text(filename, text)
     for name, field in _pdf_fields(filename, text).items():
         doc.fields.setdefault(name, field)
@@ -148,6 +152,8 @@ def _from_pdf(filename: str, payload: bytes) -> ExtractedDocument:
         if current is None or _is_noisy(current.value):
             doc.fields[name] = field
     _harvest_pdf_totals(filename, text, doc.fields)
+    if ocr_note is not None:
+        doc.language_hint = ocr_note
     return doc
 
 

@@ -28,9 +28,11 @@ Oracle Cloud Always Free and Fly.io need a payment card even when the bill is ze
    - `GROQ_API_KEY`
    - `IMAP_APP_PASSWORD` (Gmail app password for `wesuffertogether22@gmail.com`)
    - `VERIFY_CORS_ORIGINS` (the console URL, comma-separated)
-4. `VERIFY_DATA_DIR` on a free instance will not contain the private hackathon bundle. Judges can **Submit email** or you replay a copied sample after SSH/disk is available. Local eval remains the scoring path.
+4. `VERIFY_DATA_DIR` on a free instance will not contain the private hackathon bundle. Judges can **Submit email** with attached files. Local eval remains the scoring path.
 
-The free disk is ephemeral. Confirm actions survive a process restart on the same instance via `VERIFY_STATE_PATH`, and are lost if Render recycles the filesystem. Replay the inbox, or attach Neon later, if a longer-lived demo is needed.
+The free disk is ephemeral. Confirm and Correct actions survive a process restart on the same instance via `VERIFY_STATE_PATH` (JSON or SQLite). They are lost if Render recycles the filesystem. Replay the inbox, or attach Neon later, if a longer-lived demo is needed.
+
+The API polls Gmail in the background when `IMAP_APP_PASSWORD` and `VERIFY_IMAP_AUTOPOLL=true` are set.
 
 ## Deploy the console
 
@@ -47,4 +49,4 @@ Point Cloudflare Pages or a Render static site at `console/`, build command `npm
 
 - The product is not a laptop-only script: it is a container with health checks, CORS, and secret injection.
 - Compute, static hosting, and models are swappable. `infra/` is the Averis mapping; Render is the student mapping of the same interfaces.
-- Human review (Confirm) is an API with an audit log, not a UI-only click.
+- Human review (Confirm and Correct) is an API with an audit log, not a UI-only click.
