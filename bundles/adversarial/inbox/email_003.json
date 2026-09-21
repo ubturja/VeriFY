@@ -1,0 +1,10 @@
+{
+  "email_id": "adv_003_ms_ok",
+  "from": "operasi@pelabuhan.my",
+  "subject": "Mohon semak draft BL berbanding SI",
+  "body": "Salam, sila semak lampiran arahan penghantaran dan draf bil muatan. Terima kasih.",
+  "attachments": [
+    "attachments/adv_003_SI.txt",
+    "attachments/adv_003_BL.txt"
+  ]
+}

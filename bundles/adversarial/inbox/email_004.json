@@ -1,0 +1,10 @@
+{
+  "email_id": "adv_004_ms_mismatch",
+  "from": "eksport@perdagangan.my",
+  "subject": "Draft BL - mohon semakan segera",
+  "body": "Terdapat percanggahan pada berat kotor. Sila bandingkan draft BL dan SI.",
+  "attachments": [
+    "attachments/adv_004_SI.txt",
+    "attachments/adv_004_BL.txt"
+  ]
+}

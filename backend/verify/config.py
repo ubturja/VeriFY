@@ -47,24 +47,32 @@ class Settings(BaseSettings):
     )
 
     ocr_backend: str = Field(default="tesseract", alias="VERIFY_OCR_BACKEND")
-    azure_document_intelligence_endpoint: str = Field(
-        default="", alias="AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT"
-    )
+    azure_document_intelligence_endpoint: str = Field(default="", alias="AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT")
     azure_document_intelligence_key: str = Field(default="", alias="AZURE_DOCUMENT_INTELLIGENCE_KEY")
 
     mail_source: str = Field(default="hackathon", alias="VERIFY_MAIL_SOURCE")
     imap_host: str = Field(default="imap.gmail.com", alias="IMAP_HOST")
     imap_port: int = Field(default=993, alias="IMAP_PORT")
-    imap_username: str = Field(default="wesuffertogether22@gmail.com", alias="IMAP_USERNAME")
+    imap_username: str = Field(default="", alias="IMAP_USERNAME")
     imap_app_password: str = Field(default="", alias="IMAP_APP_PASSWORD")
     imap_folder: str = Field(default="INBOX", alias="IMAP_FOLDER")
     imap_poll_seconds: int = Field(default=30, alias="IMAP_POLL_SECONDS")
+    imap_autopoll: bool = Field(default=True, alias="VERIFY_IMAP_AUTOPOLL")
 
-    auth_mode: str = Field(default="local", alias="VERIFY_AUTH_MODE")
-    reviewer_name: str = Field(default="Reviewer", alias="VERIFY_REVIEWER_NAME")
+    auth_mode: str = Field(default="session", alias="VERIFY_AUTH_MODE")
+    tenants_dir: Path = Field(default=Path("artifacts/tenants"), alias="VERIFY_TENANTS_DIR")
+    secret_key: str = Field(default="", alias="VERIFY_SECRET_KEY")
+    require_secret_key: bool = Field(default=False, alias="VERIFY_REQUIRE_SECRET_KEY")
     state_path: Path | None = Field(default=Path("artifacts/state.json"), alias="VERIFY_STATE_PATH")
 
-    @field_validator("data_dir", "local_blob_dir", "ground_truth", "state_path", mode="before")
+    @field_validator(
+        "data_dir",
+        "local_blob_dir",
+        "ground_truth",
+        "state_path",
+        "tenants_dir",
+        mode="before",
+    )
     @classmethod
     def expand_path(cls, value: str | Path | None) -> Path | None:
         if value in (None, "", "None"):

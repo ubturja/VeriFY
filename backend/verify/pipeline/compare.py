@@ -27,7 +27,12 @@ def compare_documents(
     for name in COMPARE_FIELDS:
         left = si.fields.get(name)
         right = bl.fields.get(name)
-        out.append(_compare_field(name, left, right, party_threshold=party_threshold))
+        item = _compare_field(name, left, right, party_threshold=party_threshold)
+        if left and left.evidence:
+            item.si_evidence = left.evidence
+        if right and right.evidence:
+            item.bl_evidence = right.evidence
+        out.append(item)
     return out
 
 

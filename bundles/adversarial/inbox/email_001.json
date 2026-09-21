@@ -1,0 +1,10 @@
+{
+  "email_id": "adv_001_zh_ok",
+  "from": "ops@carrier.cn",
+  "subject": "请确认草稿提单 BL 与装运指令 SI",
+  "body": "你好，附上装运指令和草稿提单，请核对后回复。谢谢。",
+  "attachments": [
+    "attachments/adv_001_SI.txt",
+    "attachments/adv_001_BL.txt"
+  ]
+}

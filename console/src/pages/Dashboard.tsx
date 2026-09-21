@@ -9,6 +9,7 @@ export function DashboardPage() {
     by_status: Record<string, number>;
     by_category?: Record<string, number>;
     confirmed: number;
+    corrected: number;
   } | null>(null);
 
   useEffect(() => {
@@ -16,6 +17,7 @@ export function DashboardPage() {
       .metrics()
       .then(setMetrics)
       .catch(() => setMetrics({ total: 0, by_status: {}, by_category: {}, confirmed: 0 }));
+      .catch(() => setMetrics({ total: 0, by_status: {}, confirmed: 0, corrected: 0 }));
   }, []);
 
   const by = metrics?.by_status ?? {};
@@ -60,7 +62,34 @@ export function DashboardPage() {
           </div>
         ))}
       </div>
-      
+
+            <div className="cards">
+        <article className="card">
+          <div className="label">{t("dashboard.total")}</div>
+          <div className="value">{metrics?.total ?? 0}</div>
+        </article>
+        <article className="card">
+          <div className="label">{t("dashboard.review")}</div>
+          <div className="value">{by.NEEDS_REVIEW ?? 0}</div>
+        </article>
+        <article className="card">
+          <div className="label">{t("dashboard.mismatch")}</div>
+          <div className="value">{by.MISMATCH ?? 0}</div>
+        </article>
+        <article className="card">
+          <div className="label">{t("dashboard.clear")}</div>
+          <div className="value">{by.OK ?? 0}</div>
+        </article>
+        <article className="card">
+          <div className="label">{t("dashboard.confirmed")}</div>
+          <div className="value">{metrics?.confirmed ?? 0}</div>
+        </article>
+        <article className="card">
+          <div className="label">{t("dashboard.corrected")}</div>
+          <div className="value">{metrics?.corrected ?? 0}</div>
+        </article>
+      </div>
+
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
         <div className="card-glass rounded-xl p-6 space-y-3">
             <p className="text-xs font-mono text-[#8a7470] uppercase tracking-wide mb-1">System Health</p>
@@ -76,10 +105,13 @@ export function DashboardPage() {
               </div>
               <div>
                 <p className="text-xs text-[#8a7470] font-mono mb-1">Clear Rate</p>
-                <p className="text-sm font-semibold text-[#7ecfa0]">{total ? Math.round((ok/total)*100) : 0}%</p>
+                <p className="text-sm font-semibold text-[#7ecfa0]">
+                  {metrics?.total ? Math.round(((by.OK ?? 0) / metrics.total) * 100) : 0}%
+                </p>
               </div>
             </div>
         </div>
+      
       </div>
     </div>
   );

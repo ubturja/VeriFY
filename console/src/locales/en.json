@@ -8,7 +8,23 @@
     "queue": "Queue",
     "dashboard": "Overview",
     "submit": "Submit email",
-    "audit": "Audit"
+    "audit": "Audit",
+    "signedInAs": "Signed in as",
+    "signOut": "Sign out"
+  },
+  "login": {
+    "title": "Sign in with your mailbox",
+    "subtitle": "Enter the Gmail address you want VeriFY to watch and the app password you generated for it. Credentials are stored encrypted at rest.",
+    "email": "Email address",
+    "appPassword": "Gmail app password",
+    "appPasswordHint": "16 character app password",
+    "signingIn": "Signing in…",
+    "submit": "Sign in",
+    "help": {
+      "gmailPrefix": "Never used an app password?",
+      "gmailLink": "Create one in Google Account",
+      "gmailSuffix": "then paste it here."
+    }
   },
   "queue": {
     "title": "Verification queue",
@@ -20,7 +36,8 @@
     "replaying": "Reading inbox…",
     "poll": "Poll mailbox",
     "polling": "Checking Gmail…",
-    "confirmed": "Confirmed"
+    "confirmed": "Confirmed",
+    "corrected": "Corrected"
   },
   "status": {
     "OK": "Clear",
@@ -44,10 +61,27 @@
     "confirmed": "Confirmed",
     "confirmedBy": "Accepted by {{name}} at {{time}}",
     "correct": "Correct",
+    "correcting": "Saving…",
+    "corrected": "Corrected",
+    "correctedBy": "Corrected by {{name}} at {{time}}",
+    "correctHint": "Override category, status, or defect fields. This changes the recorded verdict and marks it as decided by a human.",
+    "saveCorrection": "Save correction",
+    "category": "Category",
+    "status": "Status",
+    "reason": "Review reason",
+    "defectFields": "Defect fields",
     "retry": "Retry",
     "retrying": "Retrying…",
+    "reply": "Draft reply",
+    "replyLoading": "Drafting…",
+    "replySubject": "Subject",
+    "replyTo": "To",
+    "copyReply": "Copy to clipboard",
+    "dismissReply": "Close",
+    "related": "Related cases on this shipment",
     "note": "Reviewer note (optional)",
     "noteHint": "Why this verdict is accepted",
+    "correctNoteHint": "Why the machine verdict is wrong",
     "email": "Email",
     "attachments": "Attachments",
     "noCompare": "This message was classified only. No document comparison was required.",
@@ -59,11 +93,12 @@
     "review": "Waiting on a person",
     "mismatch": "Mismatches",
     "clear": "Clear",
-    "confirmed": "Confirmed"
+    "confirmed": "Confirmed",
+    "corrected": "Corrected"
   },
   "audit": {
     "title": "Audit log",
-    "subtitle": "Every Confirm and Retry is recorded. Scoreboard fields are not rewritten.",
+    "subtitle": "Every Confirm, Correct, and Retry is recorded. Confirm does not rewrite scoreboard fields. Correct does.",
     "empty": "No review actions yet.",
     "when": "When",
     "case": "Case",
@@ -76,7 +111,8 @@
     "sender": "From",
     "subject": "Subject",
     "body": "Body",
-    "paths": "Attachment paths (one per line, relative to the data directory)",
+    "paths": "Attachment paths (optional, one per line, relative to the data directory)",
+    "files": "Attach files",
     "send": "Run verification",
     "sending": "Verifying…"
   }

@@ -3,28 +3,88 @@ import { Link, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { api, type CaseRow } from "../api";
 
+const CATEGORIES = ["BL_COMPARISON", "SI_REQUEST", "INVOICE_QUERY", "GENERAL", "SPAM"] as const;
+const STATUSES = ["OK", "MISMATCH", "NEEDS_REVIEW"] as const;
+const REASONS = ["wrong_doc_type", "missing_attachment", "unreadable", "missing_value"] as const;
+
+function attachmentLeaf(path: string): string {
+  const cleaned = path.replaceAll("\\", "/");
+  const parts = cleaned.split("/");
+  return parts[parts.length - 1] || path;
+}
+
+function renderEvidence(evidence: FieldEvidence | null | undefined) {
+  if (!evidence) return null;
+  const label = `${attachmentLeaf(evidence.attachment)} · ${evidence.locator}`;
+  return (
+    <div className="evidence-line" title={evidence.snippet || undefined}>
+      {label}
+    </div>
+  );
+}
+
 export function CasePage() {
   const { t } = useTranslation();
   const { id } = useParams();
   const [row, setRow] = useState<CaseRow | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState<"confirm" | "retry" | null>(null);
+  const [busy, setBusy] = useState<"confirm" | "retry" | "correct" | null>(null);
   const [note, setNote] = useState("");
+  const [showCorrect, setShowCorrect] = useState(false);
+  const [category, setCategory] = useState("");
+  const [status, setStatus] = useState("");
+  const [reason, setReason] = useState("");
+  const [defects, setDefects] = useState<string[]>([]);
+  const [reply, setReply] = useState<{ subject: string; body: string; to: string } | null>(null);
+  const [replyBusy, setReplyBusy] = useState(false);
+  const [related, setRelated] = useState<
+    { shipment_id: string | null; matches: { email_id: string; subject: string; status: string }[] } | null
+  >(null);
 
   useEffect(() => {
     if (!id) return;
     api
       .case(id)
-      .then(setRow)
+      .then((next) => {
+        setRow(next);
+        setCategory(next.result.category);
+        setStatus(next.result.status);
+        setReason(next.result.review_reason ?? "");
+        setDefects(next.result.defect_fields ?? []);
+      })
       .catch((err: unknown) => setError(err instanceof Error ? err.message : "Not found"));
+    api
+      .related(id)
+      .then(setRelated)
+      .catch(() => setRelated(null));
   }, [id]);
+
+  async function loadReply() {
+    if (!id) return;
+    setReplyBusy(true);
+    try {
+      setReply(await api.replyDraft(id));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Reply draft failed");
+    } finally {
+      setReplyBusy(false);
+    }
+  }
+
+  function applyRow(next: CaseRow) {
+    setRow(next);
+    setCategory(next.result.category);
+    setStatus(next.result.status);
+    setReason(next.result.review_reason ?? "");
+    setDefects(next.result.defect_fields ?? []);
+  }
 
   async function confirm() {
     if (!id) return;
     setBusy("confirm");
     setError(null);
     try {
-      setRow(await api.confirm(id, { note: note.trim() || undefined }));
+      applyRow(await api.confirm(id, { note: note.trim() || undefined }));
       setNote("");
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Confirm failed");
@@ -38,7 +98,8 @@ export function CasePage() {
     setBusy("retry");
     setError(null);
     try {
-      setRow(await api.retry(id));
+      applyRow(await api.retry(id));
+      setShowCorrect(false);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Retry failed");
     } finally {
@@ -46,25 +107,42 @@ export function CasePage() {
     }
   }
 
-  if (error && !row) return <p className="text-[#e5997e] font-mono text-sm">{error}</p>;
-  if (!row) return (
-    <div className="section-blur-enter text-center mt-10">
-      <div className="flex justify-center gap-1.5 mt-8">
-          {[0, 1, 2, 3, 4].map(i => (
-              <div key={i} className="w-1.5 h-1.5 rounded-full"
-                  style={{ background: '#e5cf80', animation: `pulse 1s ease-in-out ${i * 0.12}s infinite alternate`, opacity: 0.4 }} />
-          ))}
-      </div>
-      <p className="text-xs font-mono text-[#8a7470] mt-4">Loading case data...</p>
-    </div>
-  );
+  async function correct() {
+    if (!id) return;
+    setBusy("correct");
+    setError(null);
+    try {
+      applyRow(
+        await api.correct(id, {
+          note: note.trim() || undefined,
+          category,
+          status,
+          review_reason: status === "NEEDS_REVIEW" ? reason || undefined : undefined,
+          defect_fields: status === "MISMATCH" ? defects : [],
+        }),
+      );
+      setNote("");
+      setShowCorrect(false);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Correct failed");
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  function toggleDefect(field: string) {
+    setDefects((current) =>
+      current.includes(field) ? current.filter((item) => item !== field) : [...current, field],
+    );
+  }
+
+  if (error && !row) return <p className="muted">{error}</p>;
+  if (!row) return <p className="muted">Loading…</p>;
 
   const comparisons = row.result.comparisons ?? [];
   const confirmed = row.review?.action === "confirm";
-  
-  const ok = comparisons.filter((c) => c.match === true).length;
-  const mismatch = comparisons.filter((c) => c.match === false).length;
-  const unsure = comparisons.filter((c) => c.match === null).length;
+  const corrected = row.review?.action === "correct";
+  const reviewed = confirmed || corrected;
 
   return (
     <div className="section-blur-enter h-full overflow-y-auto space-y-6">
@@ -101,31 +179,165 @@ export function CasePage() {
           className="text-xs font-semibold px-4 py-2 rounded-lg transition-all hover:scale-105 disabled:opacity-50 cursor-pointer ml-auto"
           style={{ background: 'linear-gradient(135deg, #8e3b31, #b8963a)', color: '#f0ebe9', boxShadow: '0 0 16px rgba(142,59,49,0.25)' }}
           onClick={() => void confirm()}
-          disabled={busy !== null || confirmed}
+          disabled={busy !== null || reviewed}
         >
           {busy === "confirm" ? t("case.confirming") : t("case.confirm")}
         </button>
         <button
-          className="text-xs font-semibold px-4 py-2 rounded-lg transition-all hover:scale-105 disabled:opacity-50 cursor-pointer"
-          style={{ background: 'rgba(28,22,21,0.8)', border: '1px solid rgba(142,59,49,0.25)', color: '#e5cf80' }}
+          className="btn secondary"
+          type="button"
+          onClick={() => setShowCorrect((open) => !open)}
+          disabled={busy !== null}
+        >
+          {t("case.correct")}
+        </button>
+        <button
+          className="btn secondary"
+          type="button"
           onClick={() => void retry()}
           disabled={busy !== null}
         >
           {busy === "retry" ? t("case.retrying") : t("case.retry")}
         </button>
+        <button
+          className="btn secondary"
+          type="button"
+          onClick={() => void loadReply()}
+          disabled={replyBusy}
+        >
+          {replyBusy ? t("case.replyLoading") : t("case.reply")}
+        </button>
       </div>
+
+       {reply ? (
+        <section className="reply-panel">
+          <div className="reply-head">
+            <span>{t("case.replySubject")}: {reply.subject}</span>
+            <span className="muted small">
+              {t("case.replyTo")}: {reply.to || "-"}
+            </span>
+          </div>
+          <textarea readOnly value={reply.body} />
+          <div>
+            <button
+              className="btn secondary small"
+              type="button"
+              onClick={() => {
+                void navigator.clipboard?.writeText(reply.body);
+              }}
+            >
+              {t("case.copyReply")}
+            </button>
+            <button
+              className="btn secondary small"
+              type="button"
+              onClick={() => setReply(null)}
+              style={{ marginLeft: 8 }}
+            >
+              {t("case.dismissReply")}
+            </button>
+          </div>
+        </section>
+      ) : null}
+      {related && related.matches.length ? (
+        <section className="related">
+          <h2 style={{ fontSize: 16, fontWeight: 600 }}>
+            {t("case.related")}{" "}
+            <span className="muted small">({related.shipment_id})</span>
+          </h2>
+          <ul>
+            {related.matches.map((match) => (
+              <li key={match.email_id}>
+                <Link to={`/cases/${encodeURIComponent(match.email_id)}`}>
+                  {match.subject || match.email_id}
+                </Link>{" "}
+                <span className="muted small">{match.status}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
 
       {error ? <p className="text-[#e5997e] font-mono text-sm">{error}</p> : null}
 
-      {confirmed && row.review ? (
+      {reviewed && row.review ? (
         <div className="card-glass rounded-xl p-4 text-xs font-mono text-[#8a7470]">
-          <span className="text-[#e5cf80] font-semibold">Reviewed by {row.review.by} </span>
-          at {row.review.at.replace("T", " ").replace("Z", " UTC")}
-          {row.review.note && <span> · Note: {row.review.note}</span>}
+          <span className="text-[#e5cf80] font-semibold">
+            {t(corrected ? "case.correctedBy" : "case.confirmedBy", {
+              name: row.review.by,
+              time: row.review.at.replace("T", " ").replace("Z", " UTC"),
+            })}
+          </span>
+          {row.review.note && <span> · {row.review.note}</span>}
         </div>
-      ) : (
-        <div className="card-glass rounded-xl p-5 space-y-3">
-          <p className="text-xs font-mono text-[#8a7470] uppercase tracking-wide">{t("case.note")}</p>
+      ) : null}
+
+      {showCorrect ? (
+        <form
+          className="correct-panel"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void correct();
+          }}
+        >
+          <p className="muted">{t("case.correctHint")}</p>
+          <div className="correct-grid">
+            <label className="field">
+              <span>{t("case.category")}</span>
+              <select value={category} onChange={(e) => setCategory(e.target.value)} disabled={busy !== null}>
+                {CATEGORIES.map((item) => (
+                  <option key={item} value={item}>
+                    {t(`category.${item}`)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="field">
+              <span>{t("case.status")}</span>
+              <select value={status} onChange={(e) => setStatus(e.target.value)} disabled={busy !== null}>
+                {STATUSES.map((item) => (
+                  <option key={item} value={item}>
+                    {t(`status.${item}`)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {status === "NEEDS_REVIEW" ? (
+              <label className="field">
+                <span>{t("case.reason")}</span>
+                <select value={reason} onChange={(e) => setReason(e.target.value)} disabled={busy !== null}>
+                  {REASONS.map((item) => (
+                    <option key={item} value={item}>
+                      {item.replaceAll("_", " ")}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : null}
+          </div>
+          {status === "MISMATCH" ? (
+            <fieldset className="defect-fields">
+              <legend>{t("case.defectFields")}</legend>
+              {COMPARE_FIELDS.map((field) => (
+                <label key={field}>
+                  <input
+                    type="checkbox"
+                    checked={defects.includes(field)}
+                    onChange={() => toggleDefect(field)}
+                    disabled={busy !== null}
+                  />
+                  {field.replaceAll("_", " ")}
+                </label>
+              ))}
+            </fieldset>
+          ) : null}
+          <label className="field" style={{ maxWidth: 420 }}>
+            <span className="muted">{t("case.note")}</span>
+            <input
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder={t("case.correctNoteHint")}     
+      
           <input
             className="w-full max-w-md text-sm px-3 py-2 rounded-lg transition-all focus:outline-none"
             style={{ background: "rgba(13,10,9,0.6)", border: "1px solid rgba(142,59,49,0.15)", color: "#f0ebe9" }}
@@ -134,9 +346,18 @@ export function CasePage() {
             placeholder={t("case.noteHint")}
             disabled={busy !== null}
           />
-        </div>
-      )}
-
+        </label>
+      ) : null}
+      {row.attachments.length > 0 ? (
+        <>
+          <h2 style={{ fontSize: 16, fontWeight: 600 }}>{t("case.attachments")}</h2>
+          <ul className="attachment-list">
+            {row.attachments.map((item) => (
+              <li key={`${item.path}-${item.filename}`}>{item.filename}</li>
+            ))}
+          </ul>
+        </>
+      ) : null}
       {comparisons.length === 0 ? (
         <div className="card-glass rounded-xl p-5 text-sm font-mono text-[#8a7470]">
            {row.result.review_reason === "missing_attachment"
@@ -144,7 +365,8 @@ export function CasePage() {
             : t("case.noCompare")}
         </div>
       ) : (
-        <div className="space-y-4">
+
+                 <div className="space-y-4">
           <div className="grid grid-cols-3 gap-3">
             {[
               { label: 'Matched', val: ok, color: '#7ecfa0', bg: 'rgba(126,207,160,0.08)', border: 'rgba(126,207,160,0.25)' },
@@ -156,6 +378,33 @@ export function CasePage() {
                 <p className="text-3xl font-semibold font-display" style={{ color: s.color }}>{s.val}</p>
                 <p className="text-xs font-mono mt-1" style={{ color: s.color }}>{s.label}</p>
               </div>
+            ))}
+          </div>
+
+          <h2 style={{ fontSize: 16, fontWeight: 600 }}>{t("case.fields")}</h2>
+          <div className="compare">
+            <div className="head">Field</div>
+            <div className="head">{t("case.si")}</div>
+            <div className="head">{t("case.bl")}</div>
+            <div className="head">Result</div>
+            {comparisons.map((item) => (
+              <div key={item.field} style={{ display: "contents" }}>
+                <div>{item.field.replaceAll("_", " ")}</div>
+                <div>
+                  <div className="cell-value">{item.si_value ?? "-"}</div>
+                  {renderEvidence(item.si_evidence)}
+                </div>
+                <div>
+                  <div className="cell-value">{item.bl_value ?? "-"}</div>
+                  {renderEvidence(item.bl_evidence)}
+                </div>
+                <div>
+                  <div>
+                    {item.match === true ? "Match" : item.match === false ? "Differ" : "Unsure"}
+                  </div>
+                  {item.note ? <div className="evidence-line">{item.note}</div> : null}
+                </div>       
+               
             ))}
           </div>
 

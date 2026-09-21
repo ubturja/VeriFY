@@ -18,6 +18,9 @@ LABEL_SYNONYMS: dict[str, tuple[str, ...]] = {
         "exporter",
         "seller",
         "发货人",
+        # Malay
+        "penghantar",
+        "pengirim",
     ),
     "consignee": (
         "consignee",
@@ -26,6 +29,8 @@ LABEL_SYNONYMS: dict[str, tuple[str, ...]] = {
         "to the order of",
         "buyer",
         "收货人",
+        # Malay
+        "penerima",
     ),
     "notify_party": (
         "notify party",
@@ -33,6 +38,9 @@ LABEL_SYNONYMS: dict[str, tuple[str, ...]] = {
         "notify party/intermediate consignee",
         "notify party (通知人)",
         "通知人",
+        # Malay
+        "pihak maklum",
+        "pihak dimaklumkan",
     ),
     "port_of_loading": (
         "port of loading",
@@ -41,6 +49,9 @@ LABEL_SYNONYMS: dict[str, tuple[str, ...]] = {
         "pol",
         "port of loading (装货港)",
         "装货港",
+        # Malay
+        "pelabuhan muat",
+        "pelabuhan pemuatan",
     ),
     "port_of_discharge": (
         "port of discharge",
@@ -49,6 +60,9 @@ LABEL_SYNONYMS: dict[str, tuple[str, ...]] = {
         "pod",
         "port of discharge (卸货港)",
         "卸货港",
+        # Malay
+        "pelabuhan lepas",
+        "pelabuhan pelepasan",
     ),
     "container_count": (
         "no. of containers",
@@ -58,6 +72,9 @@ LABEL_SYNONYMS: dict[str, tuple[str, ...]] = {
         "箱数",
         "no. of containers or packages (箱数)",
         "container count (箱数)",
+        # Malay
+        "bilangan kontena",
+        "jumlah kontena",
     ),
     "gross_weight_kg": (
         "gross weight (kg)",
@@ -68,6 +85,9 @@ LABEL_SYNONYMS: dict[str, tuple[str, ...]] = {
         "total gross weight (kg)",
         "毛重",
         "gross wt",
+        # Malay
+        "berat kotor",
+        "berat kasar",
     ),
 }
 

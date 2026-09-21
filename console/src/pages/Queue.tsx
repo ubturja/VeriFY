@@ -24,6 +24,8 @@ export function QueuePage() {
 
   useEffect(() => {
     void load();
+    const timer = window.setInterval(() => void load(), 15000);
+    return () => window.clearInterval(timer);
   }, [status]);
 
   const filtered = useMemo(() => {
@@ -153,7 +155,13 @@ export function QueuePage() {
                       style={{ color: "#7ecfa0", background: "rgba(126,207,160,0.12)", border: "1px solid rgba(126,207,160,0.35)" }}>
                       Confirmed
                     </span>
-                  )}
+
+                     )}
+                  {e.review?.action === "correct" ? (
+                    <span className="text-xs font-mono px-2 py-0.5 rounded-full text-[#e5cf80] border border-[rgba(229,207,128,0.25)] bg-[rgba(229,207,128,0.08)]">
+                      {t("queue.corrected")}
+                    </span>
+                  ) : null}
                   <span className="text-xs text-[#8a7470] font-mono w-14 text-right">
                     {e.email_id}
                   </span>
@@ -164,5 +172,6 @@ export function QueuePage() {
         })}
       </div>
     </div>
+                  
   );
 }

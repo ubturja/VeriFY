@@ -1,30 +1,33 @@
-import { NavLink, Outlet, useLocation } from "react-router-dom";
+import { useEffect } from "react";
+import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { useState } from "react";
-
-const NAV_ITEMS = [
-  { id: "/queue", label: "nav.queue", icon: "◈" },
-  { id: "/overview", label: "nav.dashboard", icon: "▦" },
-  { id: "/submit", label: "nav.submit", icon: "⊟" },
-  { id: "/audit", label: "nav.audit", icon: "≡" },
-  { id: "/profile", label: "Profile", icon: "◯" },
-];
+import { api } from "../api";
+import { useAuth } from "../auth";
 
 export function AppShell() {
   const { t } = useTranslation();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const location = useLocation();
+  const { session, logout } = useAuth();
+  const navigate = useNavigate();
 
-  const getLabel = (id: string, def: string) => {
-    if (id === "Profile") return "Profile";
-    if (def === "nav.queue") return "Email Queue";
-    if (def === "nav.dashboard") return "Overview";
-    if (def === "nav.submit") return "Submit Email";
-    if (def === "nav.audit") return "Audit Log";
-    return t(def);
-  };
+  useEffect(() => {
+    function onUnauthorized() {
+      logout();
+      navigate("/login", { replace: true });
+    }
+    window.addEventListener("verify:unauthorized", onUnauthorized as EventListener);
+    return () =>
+      window.removeEventListener("verify:unauthorized", onUnauthorized as EventListener);
+  }, [logout, navigate]);
 
-  const isWelcome = location.pathname === "/";
+  async function onSignOut() {
+    try {
+      await api.logout();
+    } catch {
+      /* even if the server rejects it, drop the token locally */
+    }
+    logout();
+    navigate("/login", { replace: true });
+  }
 
   return (
     <div className="mesh-bg h-screen w-screen flex overflow-hidden relative text-[#f0ebe9] font-body text-[15px]">

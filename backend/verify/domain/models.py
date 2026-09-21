@@ -45,6 +45,7 @@ class ExtractedField(BaseModel):
     confidence: float = 0.0
     evidence: Evidence | None = None
     blank_token: bool = False
+    from_llm: bool = False
 
 
 class ExtractedDocument(BaseModel):
@@ -63,6 +64,8 @@ class FieldComparison(BaseModel):
     match: bool | None = None
     confidence: float = 0.0
     note: str | None = None
+    si_evidence: Evidence | None = None
+    bl_evidence: Evidence | None = None
 
 
 class Classification(BaseModel):
