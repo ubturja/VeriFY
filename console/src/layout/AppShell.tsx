@@ -144,6 +144,20 @@ export function AppShell() {
 
           {/* Sign out button */}
           <div className="px-3 py-4 border-t border-[rgba(142,59,49,0.2)]">
+            {session && (
+              <div className="mb-3 px-3">
+                <p className="text-xs font-mono text-[#8a7470] truncate">{session.email ?? ""}</p>
+                <select
+                  className="mt-2 w-full rounded-md border border-[rgba(142,59,49,0.25)] bg-[rgba(10,7,6,0.85)] px-2 py-1.5 text-xs text-[#f0ebe9]"
+                  value={role}
+                  onChange={(event) => void onRole(event.target.value as typeof role)}
+                >
+                  <option value="supervisor">{t("roles.supervisor", "Supervisor")}</option>
+                  <option value="reviewer">{t("roles.reviewer", "Reviewer")}</option>
+                  <option value="auditor">{t("roles.auditor", "Auditor")}</option>
+                </select>
+              </div>
+            )}
             <button
               onClick={() => void onSignOut()}
               className="w-full flex items-center gap-3 px-3 py-3 rounded-lg text-sm transition-all duration-200 text-left cursor-pointer"
@@ -151,45 +165,7 @@ export function AppShell() {
             >
               <span className="text-base w-5 text-center">🚪</span>
               <span className="font-medium">{t("nav.signOut", "Sign Out")}</span>
-    <div className="shell">
-      <aside className="sidebar">
-        <div className="brand">
-          <strong>{t("app.name")}</strong>
-          <span>{t("app.product")}</span>
-        </div>
-        <nav className="nav">
-          <NavLink to="/" end>
-            {t("nav.queue")}
-          </NavLink>
-          <NavLink to="/overview">{t("nav.dashboard")}</NavLink>
-          {role !== "auditor" ? <NavLink to="/submit">{t("nav.submit")}</NavLink> : null}
-          <NavLink to="/audit">{t("nav.audit")}</NavLink>
-          {role === "supervisor" ? <NavLink to="/policy">{t("nav.policy")}</NavLink> : null}
-          {role === "supervisor" ? <NavLink to="/webhooks">{t("nav.webhooks")}</NavLink> : null}
-          {role === "supervisor" ? <NavLink to="/dead-letters">{t("nav.dead")}</NavLink> : null}
-        </nav>
-        {session ? (
-          <div className="mailbox-card">
-            <div className="muted small">{t("nav.signedInAs")}</div>
-            <div className="mailbox-email" title={session.email}>
-              {session.email}
-            </div>
-            <label className="field">
-              <span className="muted small">{t("nav.role")}</span>
-              <select value={role} onChange={(event) => void onRole(event.target.value as typeof role)}>
-                <option value="supervisor">{t("roles.supervisor")}</option>
-                <option value="reviewer">{t("roles.reviewer")}</option>
-                <option value="auditor">{t("roles.auditor")}</option>
-              </select>
-            </label>
-            <button className="btn secondary small" type="button" onClick={() => void onSignOut()}>
-              {t("nav.signOut")}
             </button>
-            {session && (
-              <p className="text-xs font-mono text-[#8a7470] px-3 mt-1 truncate">
-                {session.email ?? ""}
-              </p>
-            )}
           </div>
         </div>
       </div>

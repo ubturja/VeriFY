@@ -1,9 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { api, COMPARE_FIELDS, type CaseRow, type FieldEvidence } from "../api";
+import { api, type CaseRow, type FieldEvidence } from "../api";
 import { useAuth } from "../auth";
-import { StatusPill } from "../components/StatusPill";
 
 const CATEGORIES = ["BL_COMPARISON", "SI_REQUEST", "INVOICE_QUERY", "GENERAL", "SPAM"] as const;
 const STATUSES = ["OK", "MISMATCH", "NEEDS_REVIEW"] as const;
@@ -44,14 +43,7 @@ export function CasePage() {
   const [defects, setDefects] = useState<string[]>([]);
   const [reply, setReply] = useState<{ subject: string; body: string; to: string } | null>(null);
   const [replyBusy, setReplyBusy] = useState(false);
-  const [related, setRelated] = useState<{
-    shipment_id: string | null;
-    matches: {
-      email_id: string;
-      subject: string;
-      status: string;
-    }[];
-  } | null>(null);
+  const [related, setRelated] = useState<Awaited<ReturnType<typeof api.related>> | null>(null);
 
   useEffect(() => {
     if (!id) return;
