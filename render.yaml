@@ -9,6 +9,11 @@ services:
     envVars:
       - key: VERIFY_ENV
         value: cloud
+      # Fernet key used to encrypt mailbox app passwords and mint session
+      # tokens. Render generates a stable value the first time and reuses it
+      # on later deploys, so sessions survive redeploys.
+      - key: VERIFY_SECRET_KEY
+        generateValue: true
       - key: VERIFY_API_HOST
         value: 0.0.0.0
       - key: VERIFY_BLOB_BACKEND
@@ -27,8 +32,6 @@ services:
         value: /tmp/verify-blob
       - key: IMAP_HOST
         value: imap.gmail.com
-      - key: IMAP_USERNAME
-        value: wesuffertogether22@gmail.com
       - key: IMAP_POLL_SECONDS
         value: 30
       - key: VERIFY_IMAP_AUTOPOLL
@@ -38,6 +41,10 @@ services:
       - key: GEMINI_API_KEY
         sync: false
       - key: GROQ_API_KEY
+        sync: false
+      # Optional bootstrap mailbox. Leave both blank so every reviewer signs
+      # in through the console instead of a hardcoded mailbox.
+      - key: IMAP_USERNAME
         sync: false
       - key: IMAP_APP_PASSWORD
         sync: false

@@ -54,7 +54,7 @@ async def test_poll_marks_seen_only_after_success(tmp_path, monkeypatch):
     class FakeSource:
         configured = True
 
-        def __init__(self, _settings):
+        def __init__(self, _settings, **_kwargs):
             pass
 
         def fetch_messages(self, *, unseen_only: bool = True):
@@ -76,7 +76,14 @@ async def test_poll_marks_seen_only_after_success(tmp_path, monkeypatch):
     monkeypatch.setattr(mail_poll, "ImapMailSource", FakeSource)
     monkeypatch.setattr(mail_poll, "run_pipeline", fake_pipeline)
     settings = Settings()
-    result = await poll_mailbox(settings, store=store, read=lambda _path: b"", llm=None)
+    result = await poll_mailbox(
+        settings,
+        store=store,
+        read=lambda _path: b"",
+        llm=None,
+        username="poll@test",
+        app_password="app-pass",
+    )
     assert result["ingested"] == 1
     assert result["failed"] == 1
     assert marked == [b"11"]

@@ -1,0 +1,23 @@
+# Gitleaks configuration for VeriFY.
+# Uses the default ruleset and adds allowlists for docs and example configs
+# that legitimately mention key names (never real values).
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Docs and examples that mention secret names, not values."
+paths = [
+  '''\.env\.example''',
+  '''README\.md''',
+  '''docs/.*''',
+  '''artifacts/.*''',
+  '''backend/tests/.*''',
+]
+
+regexes = [
+  # Placeholder-style env values that some rules flag as secrets.
+  '''(?i)(gemini|groq|openai|azure|imap)[_-]?(api[_-]?key|app[_-]?password|secret)\s*=\s*(""|''|\bchange[-_ ]?me\b|<[^>]+>)''',
+  # Fernet demo key that the docs use to teach how to generate one.
+  '''wtiTIa7Ggjc2lgcw1gjF3tcHH3lVpo364II299XrKwU=''',
+]

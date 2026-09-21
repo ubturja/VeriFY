@@ -19,6 +19,8 @@ from verify.pipeline.classify import classify
 from verify.pipeline.compare import compare_documents
 from verify.pipeline.doctype import is_inline_noise
 from verify.pipeline.extract import extract_from_bytes
+from verify.pipeline.extract_llm import fill_missing_fields
+from verify.pipeline.judge import resolve_gray_band
 from verify.providers.base import LLMProvider
 
 ReadBytes = Callable[[str], bytes]
@@ -39,13 +41,14 @@ async def run_pipeline(
             notes=[classification.rationale],
         )
 
-    return _compare_case(email, classification, read_bytes)
+    return await _compare_case(email, classification, read_bytes, llm)
 
 
-def _compare_case(
+async def _compare_case(
     email: EmailMessage,
     classification: Classification,
     read_bytes: ReadBytes,
+    llm: LLMProvider | None,
 ) -> PipelineResult:
     decided = classification.decided_by
     notes = [classification.rationale]
@@ -118,6 +121,15 @@ def _compare_case(
             notes=notes + ["could-not-identify-si-bl"],
         )
 
+    llm_notes: list[str] = []
+    if llm is not None and (_has_blank(si) or _has_blank(bl)):
+        filled_si = await fill_missing_fields(si, llm=llm)
+        filled_bl = await fill_missing_fields(bl, llm=llm)
+        if filled_si:
+            llm_notes.append(f"tier-b-si:{','.join(filled_si)}")
+        if filled_bl:
+            llm_notes.append(f"tier-b-bl:{','.join(filled_bl)}")
+
     if _has_blank(si) or _has_blank(bl):
         return PipelineResult(
             email_id=email.email_id,
@@ -125,12 +137,16 @@ def _compare_case(
             status=Status.NEEDS_REVIEW,
             review_reason=ReviewReason.MISSING_VALUE,
             decided_by=decided,
-            notes=notes + ["blank-required-field"],
+            notes=notes + llm_notes + ["blank-required-field"],
             si=si,
             bl=bl,
         )
 
     comparisons = compare_documents(si, bl)
+    if llm is not None:
+        flipped = await resolve_gray_band(comparisons, llm=llm)
+        if flipped:
+            llm_notes.append(f"judge-flipped:{','.join(flipped)}")
     if any(item.match is None for item in comparisons):
         return PipelineResult(
             email_id=email.email_id,
@@ -141,7 +157,7 @@ def _compare_case(
             comparisons=comparisons,
             si=si,
             bl=bl,
-            notes=notes + ["incomplete-extraction"],
+            notes=notes + llm_notes + ["incomplete-extraction"],
         )
 
     defects = [item.field for item in comparisons if item.match is False]
@@ -156,7 +172,7 @@ def _compare_case(
         comparisons=comparisons,
         si=si,
         bl=bl,
-        notes=notes,
+        notes=notes + llm_notes,
     )
 
 

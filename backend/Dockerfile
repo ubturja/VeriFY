@@ -4,6 +4,9 @@ WORKDIR /app
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     tesseract-ocr \
+    tesseract-ocr-eng \
+    tesseract-ocr-chi-sim \
+    tesseract-ocr-msa \
     && rm -rf /var/lib/apt/lists/*
 
 COPY pyproject.toml /app/pyproject.toml

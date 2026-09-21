@@ -67,11 +67,33 @@ _SI_REQUEST = (
     "si needed",
     "latest si",
 )
+# Multilingual hints matched against subject+body when the plain-English
+# subject heuristics do not fire. Kept narrow so BL comparison emails that
+# also mention SI are not misrouted.
+_SI_REQUEST_I18N = (
+    "装运指令",
+    "arahan penghantaran",
+    "sila hantar si",
+    "mohon si terkini",
+)
 _BL_COMPARE = (
     "to confirm docs",
     "request bl draft",
     "draft bl",
     "amend bl",
+)
+# Multilingual BL comparison cues. Checked against subject+body when the
+# English subject heuristics do not fire. Keep narrow.
+_BL_COMPARE_I18N = (
+    "草稿提单",
+    "草稿 提单",
+    "draft 提单",
+    "draf bil muatan",
+    "draft bl berbanding",
+    "bandingkan draft bl",
+    "bandingkan draf bil",
+    "semak draft bl",
+    "semak draf bil",
 )
 
 
@@ -126,6 +148,14 @@ def score_rules(email: EmailMessage) -> tuple[Category | None, CompareIntent, fl
     if hit := _contains_any(subject, _SI_REQUEST) or re.search(r"\bsi\s*[-_]", subject):
         reason = hit if isinstance(hit, str) else "si-subject"
         return Category.SI_REQUEST, CompareIntent.UNKNOWN, 0.9, f"si:{reason}"
+
+    if hit := _contains_any(combined, _BL_COMPARE_I18N):
+        intent = _intent(body, bool(email.attachments))
+        return Category.BL_COMPARISON, intent, 0.9, f"bl-i18n:{hit}"
+
+    if _contains_any(combined, _SI_REQUEST_I18N) and not _contains_any(combined, _BL_COMPARE_I18N):
+        hit = _contains_any(combined, _SI_REQUEST_I18N)
+        return Category.SI_REQUEST, CompareIntent.UNKNOWN, 0.88, f"si-i18n:{hit}"
 
     if hit := _contains_any(subject, _BL_COMPARE):
         intent = _intent(body, bool(email.attachments))

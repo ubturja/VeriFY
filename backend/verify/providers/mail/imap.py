@@ -30,18 +30,43 @@ def rfc822_from_payload(payload: object) -> bytes:
 
 
 class ImapMailSource(MailSource):
-    """Polls an IMAP mailbox. App password is read from settings, never from code."""
+    """Polls an IMAP mailbox. Credentials are supplied per instance so a single
+    process can service many mailboxes without ever holding one in a global."""
 
     name = "imap"
 
-    def __init__(self, settings: Settings) -> None:
+    def __init__(
+        self,
+        settings: Settings,
+        *,
+        username: str | None = None,
+        app_password: str | None = None,
+    ) -> None:
         self.settings = settings
-        self.blob_root = settings.local_blob_dir / "imap"
+        self.username = username if username is not None else settings.imap_username
+        self.app_password = app_password if app_password is not None else settings.imap_app_password
+        slug = re.sub(r"[^A-Za-z0-9._@+-]+", "_", self.username or "default") or "default"
+        self.blob_root = settings.local_blob_dir / "imap" / slug
         self.blob_root.mkdir(parents=True, exist_ok=True)
 
     @property
     def configured(self) -> bool:
-        return bool(self.settings.imap_username and self.settings.imap_app_password)
+        return bool(self.username and self.app_password)
+
+    def verify_login(self) -> None:
+        """Log in and log out. Raises ``ValueError`` if credentials are wrong."""
+        if not self.configured:
+            raise ValueError("Enter both an email and a Gmail app password.")
+        client = imaplib.IMAP4_SSL(self.settings.imap_host, self.settings.imap_port)
+        try:
+            client.login(self.username, self.app_password)
+        except imaplib.IMAP4.error as exc:  # pragma: no cover - live-only
+            raise ValueError("Gmail rejected the credentials.") from exc
+        finally:
+            try:
+                client.logout()
+            except Exception:
+                pass
 
     def emails(self, *, unseen_only: bool = False) -> Iterable[EmailMessage]:
         for _uid, message in self.fetch_messages(unseen_only=unseen_only):
@@ -55,10 +80,10 @@ class ImapMailSource(MailSource):
         if not uids:
             return
         if not self.configured:
-            raise ValueError("IMAP_USERNAME and IMAP_APP_PASSWORD must be set for IMAP ingest.")
+            raise ValueError("IMAP credentials missing for mark_seen.")
         client = imaplib.IMAP4_SSL(self.settings.imap_host, self.settings.imap_port)
         try:
-            client.login(self.settings.imap_username, self.settings.imap_app_password)
+            client.login(self.username, self.app_password)
             client.select(self.settings.imap_folder, readonly=False)
             for uid in uids:
                 client.uid("STORE", uid, "+FLAGS", r"(\Seen)")
@@ -118,9 +143,9 @@ class ImapMailSource(MailSource):
 
     def _connect(self) -> imaplib.IMAP4_SSL:
         if not self.configured:
-            raise ValueError("IMAP_USERNAME and IMAP_APP_PASSWORD must be set for IMAP ingest.")
+            raise ValueError("IMAP credentials missing.")
         client = imaplib.IMAP4_SSL(self.settings.imap_host, self.settings.imap_port)
-        client.login(self.settings.imap_username, self.settings.imap_app_password)
+        client.login(self.username, self.app_password)
         return client
 
     def _fetch(self, *, unseen_only: bool) -> list[tuple[bytes, EmailMessage]]:
