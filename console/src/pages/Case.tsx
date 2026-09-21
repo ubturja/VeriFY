@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { api,  type CaseRow,  COMPARE_FIELDS,} from "../api";
+import { api, type CaseRow, COMPARE_FIELDS, } from "../api";
 
 type Comparison = NonNullable<CaseRow["result"]["comparisons"]>[number];
 type FieldEvidence = NonNullable<Comparison["si_evidence"]>;
@@ -43,9 +43,14 @@ export function CasePage() {
   const [defects, setDefects] = useState<string[]>([]);
   const [reply, setReply] = useState<{ subject: string; body: string; to: string } | null>(null);
   const [replyBusy, setReplyBusy] = useState(false);
-  const [related, setRelated] = useState
-  { shipment_id: string | null; matches: { email_id: string; subject: string; status: string } [] } | null
-    > (null);
+  const [related, setRelated] = useState<{
+    shipment_id: string | null;
+    matches: {
+      email_id: string;
+      subject: string;
+      status: string;
+    }[];
+  } | null>(null);
 
   useEffect(() => {
     if (!id) return;
