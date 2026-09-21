@@ -1,3 +1,13 @@
+export const COMPARE_FIELDS = [
+  "shipper",
+  "consignee",
+  "notify_party",
+  "port_of_loading",
+  "port_of_discharge",
+  "container_count",
+  "gross_weight_kg",
+] as const;
+
 export type ReviewStamp = {
   action: string;
   at: string;
@@ -5,6 +15,13 @@ export type ReviewStamp = {
   note: string | null;
   accepted_status?: string;
   accepted_category?: string;
+  previous?: {
+    category?: string;
+    status?: string;
+    has_defect?: boolean;
+    defect_fields?: string[];
+    review_reason?: string | null;
+  };
 };
 
 export type CaseRow = {
@@ -39,6 +56,12 @@ export type AuditEvent = {
   note: string | null;
 };
 
+export type SubmitAttachment = {
+  path?: string;
+  filename?: string;
+  content_base64?: string;
+};
+
 const explicit = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, "");
 const base = explicit || "/api";
 
@@ -63,7 +86,14 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const api = {
-  health: () => request<{ status: string; llm: string; cases: number }>("/health"),
+  health: () =>
+    request<{
+      status: string;
+      llm: string;
+      cases: number;
+      imap_ready: boolean;
+      imap_autopoll: boolean;
+    }>("/health"),
   cases: (query = "") => request<CaseRow[]>(`/cases${query}`),
   case: (id: string) => request<CaseRow>(`/cases/${encodeURIComponent(id)}`),
   replay: () => request<{ ingested: number }>("/inbox/replay", { method: "POST" }),
@@ -76,6 +106,21 @@ export const api = {
       method: "POST",
       body: JSON.stringify(body),
     }),
+  correct: (
+    id: string,
+    body: {
+      reviewer?: string;
+      note?: string;
+      category?: string;
+      status?: string;
+      review_reason?: string;
+      defect_fields?: string[];
+    },
+  ) =>
+    request<CaseRow>(`/cases/${encodeURIComponent(id)}/correct`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
   retry: (id: string) =>
     request<CaseRow>(`/cases/${encodeURIComponent(id)}/retry`, { method: "POST" }),
   audit: () => request<AuditEvent[]>("/audit"),
@@ -85,5 +130,6 @@ export const api = {
       by_status: Record<string, number>;
       by_category: Record<string, number>;
       confirmed: number;
+      corrected: number;
     }>("/metrics"),
 };

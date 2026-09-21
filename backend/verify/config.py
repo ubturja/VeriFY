@@ -47,9 +47,7 @@ class Settings(BaseSettings):
     )
 
     ocr_backend: str = Field(default="tesseract", alias="VERIFY_OCR_BACKEND")
-    azure_document_intelligence_endpoint: str = Field(
-        default="", alias="AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT"
-    )
+    azure_document_intelligence_endpoint: str = Field(default="", alias="AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT")
     azure_document_intelligence_key: str = Field(default="", alias="AZURE_DOCUMENT_INTELLIGENCE_KEY")
 
     mail_source: str = Field(default="hackathon", alias="VERIFY_MAIL_SOURCE")
@@ -59,6 +57,7 @@ class Settings(BaseSettings):
     imap_app_password: str = Field(default="", alias="IMAP_APP_PASSWORD")
     imap_folder: str = Field(default="INBOX", alias="IMAP_FOLDER")
     imap_poll_seconds: int = Field(default=30, alias="IMAP_POLL_SECONDS")
+    imap_autopoll: bool = Field(default=True, alias="VERIFY_IMAP_AUTOPOLL")
 
     auth_mode: str = Field(default="local", alias="VERIFY_AUTH_MODE")
     reviewer_name: str = Field(default="Reviewer", alias="VERIFY_REVIEWER_NAME")

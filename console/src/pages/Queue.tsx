@@ -25,6 +25,8 @@ export function QueuePage() {
 
   useEffect(() => {
     void load();
+    const timer = window.setInterval(() => void load(), 15000);
+    return () => window.clearInterval(timer);
   }, [status]);
 
   const filtered = useMemo(() => {
@@ -113,6 +115,11 @@ export function QueuePage() {
                   {row.review?.action === "confirm" ? (
                     <span className="pill confirmed" style={{ marginLeft: 8 }}>
                       {t("queue.confirmed")}
+                    </span>
+                  ) : null}
+                  {row.review?.action === "correct" ? (
+                    <span className="pill corrected" style={{ marginLeft: 8 }}>
+                      {t("queue.corrected")}
                     </span>
                   ) : null}
                 </td>

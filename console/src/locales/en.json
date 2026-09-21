@@ -20,7 +20,8 @@
     "replaying": "Reading inbox…",
     "poll": "Poll mailbox",
     "polling": "Checking Gmail…",
-    "confirmed": "Confirmed"
+    "confirmed": "Confirmed",
+    "corrected": "Corrected"
   },
   "status": {
     "OK": "Clear",
@@ -44,10 +45,20 @@
     "confirmed": "Confirmed",
     "confirmedBy": "Accepted by {{name}} at {{time}}",
     "correct": "Correct",
+    "correcting": "Saving…",
+    "corrected": "Corrected",
+    "correctedBy": "Corrected by {{name}} at {{time}}",
+    "correctHint": "Override category, status, or defect fields. This changes the recorded verdict and marks it as decided by a human.",
+    "saveCorrection": "Save correction",
+    "category": "Category",
+    "status": "Status",
+    "reason": "Review reason",
+    "defectFields": "Defect fields",
     "retry": "Retry",
     "retrying": "Retrying…",
     "note": "Reviewer note (optional)",
     "noteHint": "Why this verdict is accepted",
+    "correctNoteHint": "Why the machine verdict is wrong",
     "email": "Email",
     "attachments": "Attachments",
     "noCompare": "This message was classified only. No document comparison was required.",
@@ -59,11 +70,12 @@
     "review": "Waiting on a person",
     "mismatch": "Mismatches",
     "clear": "Clear",
-    "confirmed": "Confirmed"
+    "confirmed": "Confirmed",
+    "corrected": "Corrected"
   },
   "audit": {
     "title": "Audit log",
-    "subtitle": "Every Confirm and Retry is recorded. Scoreboard fields are not rewritten.",
+    "subtitle": "Every Confirm, Correct, and Retry is recorded. Confirm does not rewrite scoreboard fields. Correct does.",
     "empty": "No review actions yet.",
     "when": "When",
     "case": "Case",
@@ -76,7 +88,8 @@
     "sender": "From",
     "subject": "Subject",
     "body": "Body",
-    "paths": "Attachment paths (one per line, relative to the data directory)",
+    "paths": "Attachment paths (optional, one per line, relative to the data directory)",
+    "files": "Attach files",
     "send": "Run verification",
     "sending": "Verifying…"
   }

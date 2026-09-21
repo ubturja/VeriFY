@@ -27,7 +27,7 @@ MailSource (hackathon folder | HTTP inbox | IMAP | manual submit)
                            |
               OK | MISMATCH | NEEDS_REVIEW
                            |
-        Case store, audit log, SSE to console
+        Case store, audit log, console refresh
 ```
 
 Each pipeline stage is a pure function of typed domain objects. Providers (LLM, OCR, blob, queue, mail) are interfaces. Local implementations run on a laptop. Azure implementations are swapped by configuration.
@@ -56,6 +56,17 @@ This is the same shape that supports tens of millions of messages per day. Azure
 | OCR | Tesseract | Tesseract in the image | Document Intelligence F0 |
 | LLM | Gemini, Groq fallback | same, keys in host env | same providers, keys in Key Vault |
 | Console | Vite dev server | Cloudflare Pages or Render static | Static Web Apps |
-| Review | Confirm API + `artifacts/state.json` | same, ephemeral disk | persisted store + audit |
+| Review | Confirm / Correct API + JSON or SQLite state | same, ephemeral disk | persisted store + audit |
+
+## Human review
+
+- **Confirm** stamps who accepted the current machine verdict. Category, status, and defect fields do not change.
+- **Correct** is the override. The reviewer sets category, status, and defect fields. `decided_by` becomes `human`. The previous machine values are kept on the review stamp.
+- **Retry** re-runs the pipeline and clears the review stamp.
+
+## Mail ingest
+
+IMAP poll (`POST /inbox/imap` and the API lifespan loop) skips message ids already in the case store and marks fetched messages as seen. Background polling uses `UNSEEN`. The queue **Poll mailbox** button fetches recent mail including already-read messages, still skipping ids that have been ingested.
 
 Azure OpenAI is the intended production model host inside Averis's tenant. It is not available on Azure for Students, so the prototype uses Gemini with a Groq fallback behind the same `LLMProvider` interface. `infra/` stays as the Terraform mapping; it is not required to run the demo.
+

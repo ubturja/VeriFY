@@ -8,13 +8,14 @@ export function DashboardPage() {
     total: number;
     by_status: Record<string, number>;
     confirmed: number;
+    corrected: number;
   } | null>(null);
 
   useEffect(() => {
     api
       .metrics()
       .then(setMetrics)
-      .catch(() => setMetrics({ total: 0, by_status: {}, confirmed: 0 }));
+      .catch(() => setMetrics({ total: 0, by_status: {}, confirmed: 0, corrected: 0 }));
   }, []);
 
   const by = metrics?.by_status ?? {};
@@ -43,6 +44,10 @@ export function DashboardPage() {
         <article className="card">
           <div className="label">{t("dashboard.confirmed")}</div>
           <div className="value">{metrics?.confirmed ?? 0}</div>
+        </article>
+        <article className="card">
+          <div className="label">{t("dashboard.corrected")}</div>
+          <div className="value">{metrics?.corrected ?? 0}</div>
         </article>
       </div>
     </section>

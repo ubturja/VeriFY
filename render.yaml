@@ -22,11 +22,17 @@ services:
       - key: VERIFY_MAIL_SOURCE
         value: hackathon
       - key: VERIFY_STATE_PATH
-        value: /tmp/verify-state.json
+        value: /tmp/verify-state.sqlite
+      - key: VERIFY_LOCAL_BLOB_DIR
+        value: /tmp/verify-blob
       - key: IMAP_HOST
         value: imap.gmail.com
       - key: IMAP_USERNAME
         value: wesuffertogether22@gmail.com
+      - key: IMAP_POLL_SECONDS
+        value: 30
+      - key: VERIFY_IMAP_AUTOPOLL
+        value: true
       - key: VERIFY_CORS_ORIGINS
         sync: false
       - key: GEMINI_API_KEY

@@ -20,6 +20,15 @@ def safe_email_id(raw: str | None) -> str:
     return cleaned[:180] or f"imap-{uuid.uuid4()}"
 
 
+def rfc822_from_payload(payload: object) -> bytes:
+    if not isinstance(payload, list | tuple):
+        return b""
+    for part in payload:
+        if isinstance(part, tuple) and len(part) >= 2 and isinstance(part[1], bytes):
+            return part[1]
+    return b""
+
+
 class ImapMailSource(MailSource):
     """Polls an IMAP mailbox. App password is read from settings, never from code."""
 
@@ -34,8 +43,30 @@ class ImapMailSource(MailSource):
     def configured(self) -> bool:
         return bool(self.settings.imap_username and self.settings.imap_app_password)
 
-    def emails(self) -> Iterable[EmailMessage]:
-        yield from self._fetch(unseen_only=False)
+    def emails(self, *, unseen_only: bool = False) -> Iterable[EmailMessage]:
+        for _uid, message in self.fetch_messages(unseen_only=unseen_only):
+            yield message
+
+    def fetch_messages(self, *, unseen_only: bool = False) -> list[tuple[bytes, EmailMessage]]:
+        """Fetch messages without changing IMAP flags. Call mark_seen after ingest succeeds."""
+        return self._fetch(unseen_only=unseen_only)
+
+    def mark_seen(self, uids: list[bytes]) -> None:
+        if not uids:
+            return
+        if not self.configured:
+            raise ValueError("IMAP_USERNAME and IMAP_APP_PASSWORD must be set for IMAP ingest.")
+        client = imaplib.IMAP4_SSL(self.settings.imap_host, self.settings.imap_port)
+        try:
+            client.login(self.settings.imap_username, self.settings.imap_app_password)
+            client.select(self.settings.imap_folder, readonly=False)
+            for uid in uids:
+                client.uid("STORE", uid, "+FLAGS", r"(\Seen)")
+        finally:
+            try:
+                client.logout()
+            except Exception:
+                pass
 
     def read_bytes(self, att_path: str) -> bytes:
         path = Path(att_path)
@@ -85,21 +116,30 @@ class ImapMailSource(MailSource):
             source="imap",
         )
 
-    def _fetch(self, *, unseen_only: bool) -> list[EmailMessage]:
+    def _connect(self) -> imaplib.IMAP4_SSL:
         if not self.configured:
             raise ValueError("IMAP_USERNAME and IMAP_APP_PASSWORD must be set for IMAP ingest.")
         client = imaplib.IMAP4_SSL(self.settings.imap_host, self.settings.imap_port)
+        client.login(self.settings.imap_username, self.settings.imap_app_password)
+        return client
+
+    def _fetch(self, *, unseen_only: bool) -> list[tuple[bytes, EmailMessage]]:
+        client = self._connect()
         try:
-            client.login(self.settings.imap_username, self.settings.imap_app_password)
             client.select(self.settings.imap_folder, readonly=True)
             criterion = "UNSEEN" if unseen_only else "ALL"
-            _, data = client.search(None, criterion)
-            ids = data[0].split() if data[0] else []
-            messages: list[EmailMessage] = []
-            for msg_id in ids[-50:]:
-                _, payload = client.fetch(msg_id, "(RFC822)")
-                raw = payload[0][1]
-                messages.append(self.parse(raw if isinstance(raw, bytes) else b""))
+            _, data = client.uid("SEARCH", None, criterion)
+            ids = data[0].split() if data and data[0] else []
+            messages: list[tuple[bytes, EmailMessage]] = []
+            for uid in ids[-50:]:
+                _, payload = client.uid("FETCH", uid, "(RFC822)")
+                raw = rfc822_from_payload(payload)
+                if not raw:
+                    continue
+                try:
+                    messages.append((uid, self.parse(raw)))
+                except Exception:
+                    continue
             return messages
         finally:
             try:
