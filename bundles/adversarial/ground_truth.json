@@ -46,5 +46,29 @@
     "status": "OK",
     "has_defect": false,
     "defect_fields": []
+  },
+  "adv_009_renamed": {
+    "category": "BL_COMPARISON",
+    "status": "OK",
+    "has_defect": false,
+    "defect_fields": []
+  },
+  "adv_010_swapped": {
+    "category": "BL_COMPARISON",
+    "status": "OK",
+    "has_defect": false,
+    "defect_fields": []
+  },
+  "adv_011_locode": {
+    "category": "BL_COMPARISON",
+    "status": "OK",
+    "has_defect": false,
+    "defect_fields": []
+  },
+  "adv_012_weight_round": {
+    "category": "BL_COMPARISON",
+    "status": "MISMATCH",
+    "has_defect": true,
+    "defect_fields": ["gross_weight_kg"]
   }
 }

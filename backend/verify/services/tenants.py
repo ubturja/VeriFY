@@ -18,6 +18,9 @@ from typing import Any
 
 from cryptography.fernet import Fernet, InvalidToken
 
+from verify.services.evalset import EvalSet
+from verify.services.fewshot import FewShotStore
+from verify.services.policy_store import PolicyStore
 from verify.services.store import CaseStore
 from verify.services.synonyms import SynonymStore
 
@@ -56,6 +59,9 @@ class Tenant:
     slug: str
     store: CaseStore
     synonyms: SynonymStore
+    policy: PolicyStore
+    fewshots: FewShotStore
+    evalset: EvalSet
     imap_password_encrypted: str | None = None
     created_at: str = field(default_factory=_now)
     last_login_at: str | None = None
@@ -98,6 +104,9 @@ class TenantRegistry:
                     slug=slug,
                     store=CaseStore(self._store_path(slug)),
                     synonyms=SynonymStore(self.root / slug / "synonyms.json"),
+                    policy=PolicyStore(self.root / slug / "policy.json"),
+                    fewshots=FewShotStore(self.root / slug / "fewshots.json"),
+                    evalset=EvalSet(self.root / slug / "evalset.jsonl"),
                     imap_password_encrypted=entry.get("password"),
                     created_at=entry.get("created_at") or _now(),
                     last_login_at=entry.get("last_login_at"),
@@ -138,6 +147,9 @@ class TenantRegistry:
                 slug=slug,
                 store=CaseStore(self._store_path(slug)),
                 synonyms=SynonymStore(self.root / slug / "synonyms.json"),
+                policy=PolicyStore(self.root / slug / "policy.json"),
+                fewshots=FewShotStore(self.root / slug / "fewshots.json"),
+                evalset=EvalSet(self.root / slug / "evalset.jsonl"),
             )
         tenant = self._tenants[slug]
         if app_password is not None:
@@ -174,9 +186,26 @@ class TenantRegistry:
 
     def issue_token(self, tenant: Tenant) -> str:
         token = secrets.token_urlsafe(32)
-        self._sessions[token] = {"slug": tenant.slug, "at": _now()}
+        self._sessions[token] = {"slug": tenant.slug, "at": _now(), "role": "supervisor"}
         self._save_sessions()
         return token
+
+    def role_for(self, token: str) -> str:
+        entry = self._sessions.get(token) or {}
+        role = entry.get("role") or "supervisor"
+        if role not in {"supervisor", "reviewer", "auditor"}:
+            return "supervisor"
+        return role
+
+    def set_role(self, token: str, role: str) -> bool:
+        if role not in {"supervisor", "reviewer", "auditor"}:
+            raise ValueError("Role must be supervisor, reviewer, or auditor.")
+        entry = self._sessions.get(token)
+        if not entry:
+            return False
+        entry["role"] = role
+        self._save_sessions()
+        return True
 
     def resolve_token(self, token: str) -> Tenant | None:
         if not token:

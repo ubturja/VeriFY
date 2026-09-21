@@ -10,7 +10,16 @@
     "submit": "Submit email",
     "audit": "Audit",
     "signedInAs": "Signed in as",
-    "signOut": "Sign out"
+    "signOut": "Sign out",
+    "role": "Role",
+    "policy": "Policy",
+    "webhooks": "Webhooks",
+    "dead": "Dead letters"
+  },
+  "roles": {
+    "supervisor": "Supervisor",
+    "reviewer": "Reviewer",
+    "auditor": "Auditor"
   },
   "login": {
     "title": "Sign in with your mailbox",
@@ -78,6 +87,9 @@
     "replyTo": "To",
     "copyReply": "Copy to clipboard",
     "dismissReply": "Close",
+    "timeline": "Shipment timeline",
+    "pendingDraft": "Waiting for the draft BL",
+    "pairedWith": "Paired with {{id}}",
     "related": "Related cases on this shipment",
     "note": "Reviewer note (optional)",
     "noteHint": "Why this verdict is accepted",
@@ -94,7 +106,39 @@
     "mismatch": "Mismatches",
     "clear": "Clear",
     "confirmed": "Confirmed",
-    "corrected": "Corrected"
+    "corrected": "Corrected",
+    "automation": "Automation rate",
+    "llmPer100": "LLM calls / 100",
+    "cost": "Est. USD / 1,000",
+    "latency": "Median ms"
+  },
+  "policy": {
+    "title": "Mailbox policy",
+    "subtitle": "Weight tolerance and which fields are mandatory for this mailbox. The default is an exact weight match and all seven fields.",
+    "tolerance": "Weight tolerance (kg)",
+    "mandatory": "Mandatory fields",
+    "mayDiffer": "Fields that may differ without a defect",
+    "save": "Save policy",
+    "saved": "Saved."
+  },
+  "webhooks": {
+    "title": "Webhook log",
+    "subtitle": "Every decision is recorded here. It is posted only when WEBHOOK_URL is set.",
+    "empty": "No webhook payloads yet.",
+    "case": "Case",
+    "delivered": "Delivered",
+    "error": "Note",
+    "yes": "Yes",
+    "no": "No"
+  },
+  "dead": {
+    "title": "Dead letters",
+    "subtitle": "Jobs that failed three times. Retry runs them again.",
+    "empty": "No dead letters.",
+    "case": "Case",
+    "attempts": "Attempts",
+    "error": "Last error",
+    "retry": "Retry"
   },
   "audit": {
     "title": "Audit log",

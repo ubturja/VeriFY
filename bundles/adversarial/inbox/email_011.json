@@ -1,0 +1,10 @@
+{
+  "email_id": "adv_011_locode",
+  "from": "ops@carrier.test",
+  "subject": "draft BL port code only",
+  "body": "Please compare. The BL uses the UN locode for the load port.",
+  "attachments": [
+    "attachments/adv_011_SI.txt",
+    "attachments/adv_011_BL.txt"
+  ]
+}

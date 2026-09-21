@@ -119,6 +119,7 @@ export type MailboxSession = {
 
 export type MailboxProfile = {
   email: string;
+  role: "supervisor" | "reviewer" | "auditor";
   imap_ready: boolean;
   last_login_at: string | null;
   poll: {
@@ -143,6 +144,32 @@ export const api = {
     request<MailboxSession>("/auth/login", { method: "POST", body: JSON.stringify(body) }),
   logout: () => request<{ ok: boolean }>("/auth/logout", { method: "POST" }),
   me: () => request<MailboxProfile>("/auth/me"),
+  setRole: (role: "supervisor" | "reviewer" | "auditor") =>
+    request<{ email: string; role: MailboxProfile["role"] }>("/auth/role", {
+      method: "POST",
+      body: JSON.stringify({ role }),
+    }),
+  policy: () =>
+    request<{
+      weight_tolerance_kg: number;
+      mandatory_fields: string[];
+      fields_may_differ: string[];
+    }>("/policy"),
+  savePolicy: (body: {
+    weight_tolerance_kg: number;
+    mandatory_fields: string[];
+    fields_may_differ: string[];
+  }) => request<Record<string, unknown>>("/policy", { method: "PUT", body: JSON.stringify(body) }),
+  webhooks: () =>
+    request<{ email_id: string; subject: string; webhook: { delivered: boolean; error: string | null } }[]>(
+      "/webhooks",
+    ),
+  deadLetters: () =>
+    request<{ id: string; attempts: number; last_error: string | null; body: { email_id: string } }[]>(
+      "/queue/dead",
+    ),
+  retryDeadLetter: (id: string) =>
+    request<{ retried: string }>(`/queue/dead/${encodeURIComponent(id)}/retry`, { method: "POST" }),
   cases: (query = "") => request<CaseRow[]>(`/cases${query}`),
   case: (id: string) => request<CaseRow>(`/cases/${encodeURIComponent(id)}`),
   replay: () => request<{ ingested: number }>("/inbox/replay", { method: "POST" }),
@@ -179,6 +206,14 @@ export const api = {
     request<{
       shipment_id: string | null;
       matches: { email_id: string; subject: string; status: string; from: string }[];
+      timeline: {
+        email_id: string;
+        subject: string;
+        status: string;
+        pending_draft?: boolean;
+        paired_with?: string | null;
+        processed_at?: string;
+      }[];
     }>(`/cases/${encodeURIComponent(id)}/related`),
   audit: () => request<AuditEvent[]>("/audit"),
   metrics: () =>
@@ -188,5 +223,10 @@ export const api = {
       by_category: Record<string, number>;
       confirmed: number;
       corrected: number;
+      automation_rate: number;
+      llm_calls_per_100: number;
+      estimated_cost_per_1000_usd: number;
+      median_latency_ms: number;
+      trend: { day: string; cases: number; automated: number; llm_calls: number }[];
     }>("/metrics"),
 };

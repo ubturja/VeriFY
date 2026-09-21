@@ -2,6 +2,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from verify.api import app as app_module
+from verify.services.jobqueue import JobQueue
 from verify.services.tenants import TenantRegistry, secret_key_or_dev
 
 
@@ -21,6 +22,7 @@ def isolated_tenants(tmp_path, monkeypatch):
     )
     registry = TenantRegistry(tmp_path / "tenants", secret_key=secret)
     monkeypatch.setattr(app_module, "tenants", registry)
+    monkeypatch.setattr(app_module, "job_queue", JobQueue(tmp_path / "queue.json"))
     return registry
 
 

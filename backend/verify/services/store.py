@@ -41,6 +41,9 @@ class CaseStore:
             "source": email.source,
             "result": result.model_dump(mode="json"),
             "review": None if reset_review else previous.get("review"),
+            "processed_at": previous.get("processed_at") or _now(),
+            "updated_at": _now(),
+            "webhook": None if reset_review else previous.get("webhook"),
         }
         self._save()
 
@@ -60,7 +63,15 @@ class CaseStore:
             "accepted_category": row["result"]["category"],
         }
         row["review"] = review
-        self._log(email_id, "confirm", reviewer=reviewer, note=note, at=review["at"])
+        self._log(
+            email_id,
+            "confirm",
+            reviewer=reviewer,
+            note=note,
+            at=review["at"],
+            model_version=row["result"].get("model_version"),
+            prompt_version=row["result"].get("prompt_version"),
+        )
         self._save()
         return row
 
@@ -128,7 +139,15 @@ class CaseStore:
             "accepted_category": result["category"],
         }
         row["review"] = review
-        self._log(email_id, "correct", reviewer=reviewer, note=note, at=review["at"])
+        self._log(
+            email_id,
+            "correct",
+            reviewer=reviewer,
+            note=note,
+            at=review["at"],
+            model_version=previous and row["result"].get("model_version"),
+            prompt_version=row["result"].get("prompt_version"),
+        )
         self._save()
         return row
 
@@ -152,8 +171,26 @@ class CaseStore:
         *,
         reviewer: str,
         note: str | None = None,
+        model_version: str | None = None,
+        prompt_version: str | None = None,
     ) -> None:
-        self._log(email_id, action, reviewer=reviewer, note=note)
+        row = self._items.get(email_id) or {}
+        result = row.get("result") or {}
+        self._log(
+            email_id,
+            action,
+            reviewer=reviewer,
+            note=note,
+            model_version=model_version if model_version is not None else result.get("model_version"),
+            prompt_version=prompt_version if prompt_version is not None else result.get("prompt_version"),
+        )
+        self._save()
+
+    def set_webhook(self, email_id: str, record: dict[str, Any]) -> None:
+        row = self._items.get(email_id)
+        if not row:
+            return
+        row["webhook"] = record
         self._save()
 
     def _log(
@@ -164,6 +201,8 @@ class CaseStore:
         reviewer: str,
         note: str | None = None,
         at: str | None = None,
+        model_version: str | None = None,
+        prompt_version: str | None = None,
     ) -> None:
         self._audit.append(
             {
@@ -172,6 +211,8 @@ class CaseStore:
                 "action": action,
                 "by": reviewer,
                 "note": note or None,
+                "model_version": model_version or None,
+                "prompt_version": prompt_version or None,
             }
         )
 
@@ -201,9 +242,16 @@ class CaseStore:
         by_category: dict[str, int] = {}
         confirmed = 0
         corrected = 0
+        automated = 0
+        llm_calls = 0
+        input_tokens = 0
+        output_tokens = 0
+        latencies: list[int] = []
+        trend: dict[str, dict[str, int]] = {}
         for row in rows:
-            status = row["result"]["status"]
-            category = row["result"]["category"]
+            result = row["result"]
+            status = result["status"]
+            category = result["category"]
             by_status[status] = by_status.get(status, 0) + 1
             by_category[category] = by_category.get(category, 0) + 1
             action = (row.get("review") or {}).get("action")
@@ -211,12 +259,37 @@ class CaseStore:
                 confirmed += 1
             elif action == "correct":
                 corrected += 1
+            touched = action in {"confirm", "correct"} or result.get("decided_by") == "human"
+            waiting = status == "NEEDS_REVIEW" and not touched
+            if not touched and not waiting:
+                automated += 1
+            usage = result.get("usage") or {}
+            llm_calls += int(usage.get("llm_calls") or 0)
+            input_tokens += int(usage.get("input_tokens") or 0)
+            output_tokens += int(usage.get("output_tokens") or 0)
+            if result.get("latency_ms"):
+                latencies.append(int(result["latency_ms"]))
+            day = (row.get("processed_at") or "")[:10] or "unknown"
+            bucket = trend.setdefault(day, {"cases": 0, "automated": 0, "llm_calls": 0})
+            bucket["cases"] += 1
+            bucket["llm_calls"] += int(usage.get("llm_calls") or 0)
+            if not touched and not waiting:
+                bucket["automated"] += 1
+        total = len(rows)
+        cost = (input_tokens * 0.10 + output_tokens * 0.40) / 1_000_000
+        latencies.sort()
+        median = latencies[len(latencies) // 2] if latencies else 0
         return {
-            "total": len(rows),
+            "total": total,
             "by_status": by_status,
             "by_category": by_category,
             "confirmed": confirmed,
             "corrected": corrected,
+            "automation_rate": round(automated / total, 4) if total else 0.0,
+            "llm_calls_per_100": round(100 * llm_calls / total, 2) if total else 0.0,
+            "estimated_cost_per_1000_usd": round(1000 * cost / total, 4) if total else 0.0,
+            "median_latency_ms": median,
+            "trend": [{"day": day, **bucket} for day, bucket in sorted(trend.items())],
         }
 
     def _use_sqlite(self) -> bool:

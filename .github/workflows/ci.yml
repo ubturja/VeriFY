@@ -25,6 +25,8 @@ jobs:
           version: "latest"
       - name: Set up Python
         run: uv python install 3.12
+      - name: Install Tesseract
+        run: sudo apt-get update && sudo apt-get install -y tesseract-ocr tesseract-ocr-eng tesseract-ocr-chi-sim tesseract-ocr-msa
       - name: Install dependencies
         run: uv sync --frozen --extra dev || uv sync --extra dev
       - name: Lint

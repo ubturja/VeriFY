@@ -1,0 +1,10 @@
+{
+  "email_id": "adv_010_swapped",
+  "from": "ops@carrier.test",
+  "subject": "draft BL attached first",
+  "body": "Please compare the attached draft BL and SI. Order is reversed.",
+  "attachments": [
+    "attachments/adv_010_BL.txt",
+    "attachments/adv_010_SI.txt"
+  ]
+}

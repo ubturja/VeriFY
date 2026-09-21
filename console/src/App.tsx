@@ -5,6 +5,9 @@ import { CasePage } from "./pages/Case";
 import { DashboardPage } from "./pages/Dashboard";
 import { SubmitPage } from "./pages/Submit";
 import { AuditPage } from "./pages/Audit";
+import { PolicyPage } from "./pages/Policy";
+import { WebhooksPage } from "./pages/Webhooks";
+import { DeadLettersPage } from "./pages/DeadLetters";
 import { LoginPage } from "./pages/Login";
 import { AuthProvider, useAuth } from "./auth";
 
@@ -33,6 +36,9 @@ export default function App() {
               <Route path="overview" element={<DashboardPage />} />
               <Route path="submit" element={<SubmitPage />} />
               <Route path="audit" element={<AuditPage />} />
+              <Route path="policy" element={<PolicyPage />} />
+              <Route path="webhooks" element={<WebhooksPage />} />
+              <Route path="dead-letters" element={<DeadLettersPage />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Route>
           </Route>

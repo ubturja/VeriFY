@@ -11,11 +11,13 @@ from pydantic import BaseModel, Field
 from verify.config import get_settings
 from verify.domain.enums import COMPARE_FIELDS, Category, ReviewReason, Status
 from verify.domain.models import AttachmentRef, EmailMessage
+from verify.domain.policy import MailboxPolicy
 from verify.pipeline.orchestrator import run_pipeline
 from verify.providers.llm.factory import NullLLMProvider, build_llm
 from verify.providers.mail.hackathon import HackathonMailSource
 from verify.providers.mail.imap import ImapMailSource
 from verify.services.attachments import read_attachment, safe_blob_segment, write_inline_attachment
+from verify.services.jobqueue import JobQueue
 from verify.services.mail_poll import (
     poll_loop,
     poll_mailbox,
@@ -25,6 +27,8 @@ from verify.services.mail_poll import (
 from verify.services.reply import build_reply
 from verify.services.shipments import related_cases, shipment_id_for
 from verify.services.tenants import Tenant, TenantRegistry, normalize_email, secret_key_or_dev
+from verify.services.usage import RecordingLLM
+from verify.services.webhook import deliver
 
 settings = get_settings()
 _secret_key = secret_key_or_dev(
@@ -45,7 +49,8 @@ if settings.imap_username and settings.imap_app_password:
         pass
 
 _llm = build_llm(settings)
-llm = None if isinstance(_llm, NullLLMProvider) else _llm
+llm = None if isinstance(_llm, NullLLMProvider) else RecordingLLM(_llm)
+job_queue = JobQueue(settings.tenants_dir / "queue.json")
 _poll_task: asyncio.Task[None] | None = None
 
 
@@ -118,6 +123,16 @@ class ConfirmBody(BaseModel):
     note: str | None = None
 
 
+class RoleBody(BaseModel):
+    role: str
+
+
+class PolicyBody(BaseModel):
+    weight_tolerance_kg: int = 0
+    mandatory_fields: list[str] = Field(default_factory=lambda: list(COMPARE_FIELDS))
+    fields_may_differ: list[str] = Field(default_factory=list)
+
+
 class CorrectBody(BaseModel):
     note: str | None = None
     category: Category | None = None
@@ -143,13 +158,32 @@ def _test_mode() -> bool:
     return settings.env in {"local", "test"}
 
 
-def current_tenant(authorization: str | None = Header(default=None)) -> Tenant:
+def _session(authorization: str | None) -> tuple[Tenant, str]:
     token = _bearer(authorization)
     if token:
         tenant = tenants.resolve_token(token)
         if tenant:
-            return tenant
+            return tenant, tenants.role_for(token)
     raise HTTPException(401, "Sign in with your mailbox to continue.")
+
+
+def current_tenant(authorization: str | None = Header(default=None)) -> Tenant:
+    tenant, _role = _session(authorization)
+    return tenant
+
+
+def require_writer(authorization: str | None = Header(default=None)) -> Tenant:
+    tenant, role = _session(authorization)
+    if role == "auditor":
+        raise HTTPException(403, "Auditors can read cases but cannot change them.")
+    return tenant
+
+
+def require_supervisor(authorization: str | None = Header(default=None)) -> Tenant:
+    tenant, role = _session(authorization)
+    if role != "supervisor":
+        raise HTTPException(403, "Only a supervisor can do that.")
+    return tenant
 
 
 def _reviewer(tenant: Tenant) -> str:
@@ -158,6 +192,50 @@ def _reviewer(tenant: Tenant) -> str:
 
 def _apply_tenant_synonyms(tenant: Tenant, result: Any) -> None:
     tenant.synonyms.apply_to_result(result)
+
+
+async def _decide(tenant: Tenant, email: EmailMessage, *, reset_review: bool = False) -> dict:
+    """Run one email through the local queue, then the pipeline.
+
+    The queue records the attempt. Three failures move the job to the
+    dead-letter list and the request fails. A success removes the job.
+    """
+    job_id = job_queue.enqueue(
+        {
+            "tenant": tenant.slug,
+            "email_id": email.email_id,
+            "source": email.source,
+            "email": email.model_dump(mode="json"),
+            "reset_review": reset_review,
+        }
+    )
+    last_error = "processing failed"
+    for _attempt in range(job_queue.max_attempts):
+        try:
+            priors = [row for row in tenant.store.list() if row.get("email_id") != email.email_id]
+            result = await run_pipeline(
+                email,
+                _read,
+                llm=llm,
+                policy=tenant.policy.load(),
+                fewshots=tenant.fewshots,
+                priors=priors,
+            )
+            _apply_tenant_synonyms(tenant, result)
+            tenant.store.upsert(email, result, reset_review=reset_review)
+            case = tenant.store.get(email.email_id) or {}
+            record = await deliver(case, url=settings.webhook_url or None)
+            tenant.store.set_webhook(email.email_id, record)
+            job_queue.complete(job_id)
+            return tenant.store.get(email.email_id) or {}
+        except HTTPException:
+            job_queue.complete(job_id)
+            raise
+        except Exception as exc:  # noqa: BLE001 - retries then dead-letter
+            last_error = str(exc)
+            if job_queue.fail(job_id, last_error) == "dead":
+                break
+    raise HTTPException(502, f"Dead-lettered {job_id}: {last_error}")
 
 
 # ------------------------------------------------------------------ health / auth
@@ -223,13 +301,28 @@ async def logout(authorization: str | None = Header(default=None)) -> dict[str, 
 
 
 @app.get("/auth/me")
-async def me(tenant: Tenant = Depends(current_tenant)) -> dict[str, Any]:
+async def me(authorization: str | None = Header(default=None)) -> dict[str, Any]:
+    tenant, role = _session(authorization)
     return {
         "email": tenant.email,
+        "role": role,
         "imap_ready": tenant.imap_password_encrypted is not None,
         "last_login_at": tenant.last_login_at,
         "poll": poll_state_for(tenant),
     }
+
+
+@app.post("/auth/role")
+async def set_role(body: RoleBody, authorization: str | None = Header(default=None)) -> dict[str, str]:
+    token = _bearer(authorization)
+    tenant, _role = _session(authorization)
+    try:
+        updated = bool(token) and tenants.set_role(token, body.role)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+    if not updated:
+        raise HTTPException(401, "Sign in with your mailbox to continue.")
+    return {"email": tenant.email, "role": body.role}
 
 
 # ------------------------------------------------------------------ cases
@@ -255,7 +348,7 @@ async def get_case(email_id: str, tenant: Tenant = Depends(current_tenant)) -> d
 @app.post("/inbox/replay")
 async def replay_inbox(
     limit: int | None = None,
-    tenant: Tenant = Depends(current_tenant),
+    tenant: Tenant = Depends(require_writer),
 ) -> dict:
     source = HackathonMailSource(settings.inbox_url or settings.data_dir)
     emails = list(source.emails())
@@ -263,9 +356,7 @@ async def replay_inbox(
         emails = emails[:limit]
     ingested = 0
     for email in emails:
-        result = await run_pipeline(email, _read, llm=llm)
-        _apply_tenant_synonyms(tenant, result)
-        tenant.store.upsert(email, result)
+        await _decide(tenant, email)
         ingested += 1
     return {"ingested": ingested, "cases": tenant.store.count()}
 
@@ -304,7 +395,7 @@ def _attachments_from_submit(
 @app.post("/inbox/submit")
 async def submit_email(
     body: SubmitEmailBody,
-    tenant: Tenant = Depends(current_tenant),
+    tenant: Tenant = Depends(require_writer),
 ) -> dict:
     email_id = body.email_id or f"manual-{tenant.store.count() + 1:04d}"
     try:
@@ -319,16 +410,13 @@ async def submit_email(
         attachments=_attachments_from_submit(tenant, email_id, body.attachments),
         source="manual",
     )
-    result = await run_pipeline(email, _read, llm=llm)
-    _apply_tenant_synonyms(tenant, result)
-    tenant.store.upsert(email, result)
-    return tenant.store.get(email_id) or {}
+    return await _decide(tenant, email)
 
 
 @app.post("/inbox/imap")
 async def poll_imap(
     unseen_only: bool = False,
-    tenant: Tenant = Depends(current_tenant),
+    tenant: Tenant = Depends(require_writer),
 ) -> dict:
     password = tenants.decrypt_password(tenant)
     if not password:
@@ -343,6 +431,9 @@ async def poll_imap(
             username=tenant.email,
             app_password=password,
             synonyms=tenant.synonyms,
+            policy=tenant.policy.load(),
+            fewshots=tenant.fewshots,
+            webhook_url=settings.webhook_url or None,
         )
     except ValueError as exc:
         raise HTTPException(400, str(exc)) from exc
@@ -354,7 +445,7 @@ async def poll_imap(
 async def confirm_case(
     email_id: str,
     body: ConfirmBody | None = None,
-    tenant: Tenant = Depends(current_tenant),
+    tenant: Tenant = Depends(require_writer),
 ) -> dict:
     payload = body or ConfirmBody()
     try:
@@ -370,7 +461,7 @@ async def confirm_case(
 async def correct_case(
     email_id: str,
     body: CorrectBody,
-    tenant: Tenant = Depends(current_tenant),
+    tenant: Tenant = Depends(require_writer),
 ) -> dict:
     if body.category is None and body.status is None and body.defect_fields is None:
         raise HTTPException(400, "Provide a category, status, or defect field override.")
@@ -408,19 +499,42 @@ async def correct_case(
             reviewer=_reviewer(tenant),
             note=",".join(remembered),
         )
+    learned = tenant.fewshots.learn_from_correction(
+        previous_defects=previous_defects,
+        current_defects=current_defects,
+        comparisons=(row.get("result") or {}).get("comparisons") or [],
+        email_id=email_id,
+        note=body.note,
+    )
+    if learned:
+        tenant.store.log_action(
+            email_id,
+            "learn-fewshot",
+            reviewer=_reviewer(tenant),
+            note=",".join(learned),
+        )
+    tenant.evalset.append(
+        {
+            "email_id": email_id,
+            "category": row["result"]["category"],
+            "status": row["result"]["status"],
+            "has_defect": row["result"].get("has_defect"),
+            "defect_fields": current_defects,
+            "previous_defect_fields": previous_defects,
+            "note": body.note,
+        }
+    )
     return row
 
 
 @app.post("/cases/{email_id}/retry")
-async def retry_case(email_id: str, tenant: Tenant = Depends(current_tenant)) -> dict:
+async def retry_case(email_id: str, tenant: Tenant = Depends(require_writer)) -> dict:
     email = tenant.store.as_email(email_id)
     if not email:
         raise HTTPException(404, "Case not found")
-    result = await run_pipeline(email, _read, llm=llm)
-    _apply_tenant_synonyms(tenant, result)
-    tenant.store.upsert(email, result, reset_review=True)
+    row = await _decide(tenant, email, reset_review=True)
     tenant.store.log_action(email_id, "retry", reviewer=_reviewer(tenant))
-    return tenant.store.get(email_id) or {}
+    return row
 
 
 @app.get("/submission")
@@ -452,10 +566,71 @@ async def related(email_id: str, tenant: Tenant = Depends(current_tenant)) -> di
     if not case:
         raise HTTPException(404, "Case not found")
     all_cases = tenant.store.list()
+    ref = (case.get("result") or {}).get("shipment_ref")
+    timeline = []
+    if ref:
+        for row in all_cases:
+            if (row.get("result") or {}).get("shipment_ref") != ref:
+                continue
+            timeline.append(
+                {
+                    "email_id": row.get("email_id"),
+                    "subject": row.get("subject"),
+                    "status": (row.get("result") or {}).get("status"),
+                    "pending_draft": (row.get("result") or {}).get("pending_draft"),
+                    "paired_with": (row.get("result") or {}).get("paired_with"),
+                    "processed_at": row.get("processed_at"),
+                }
+            )
     return {
-        "shipment_id": shipment_id_for(case),
+        "shipment_id": shipment_id_for(case) or ref,
         "matches": related_cases(case, all_cases),
+        "timeline": timeline,
     }
+
+
+@app.get("/policy")
+async def get_policy(tenant: Tenant = Depends(current_tenant)) -> dict:
+    return tenant.policy.load().model_dump()
+
+
+@app.put("/policy")
+async def put_policy(body: PolicyBody, tenant: Tenant = Depends(require_supervisor)) -> dict:
+    try:
+        saved = tenant.policy.save(MailboxPolicy.model_validate(body.model_dump()))
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+    return saved.model_dump()
+
+
+@app.get("/webhooks")
+async def webhooks(tenant: Tenant = Depends(require_supervisor)) -> list[dict]:
+    return [
+        {"email_id": row["email_id"], "subject": row.get("subject"), "webhook": row.get("webhook")}
+        for row in tenant.store.list()
+        if row.get("webhook")
+    ]
+
+
+@app.get("/queue/dead")
+async def dead_letters(tenant: Tenant = Depends(require_supervisor)) -> list[dict]:
+    return [job for job in job_queue.dead() if (job.get("body") or {}).get("tenant") == tenant.slug]
+
+
+@app.post("/queue/dead/{job_id}/retry")
+async def retry_dead_letter(job_id: str, tenant: Tenant = Depends(require_supervisor)) -> dict:
+    match = [
+        job
+        for job in job_queue.dead()
+        if job["id"] == job_id and (job.get("body") or {}).get("tenant") == tenant.slug
+    ]
+    if not match:
+        raise HTTPException(404, "Dead letter not found")
+    payload = match[0]["body"]
+    email = EmailMessage.model_validate(payload["email"])
+    job_queue.discard(job_id)
+    row = await _decide(tenant, email, reset_review=bool(payload.get("reset_review")))
+    return {"retried": email.email_id, "case": row}
 
 
 @app.get("/fields")
