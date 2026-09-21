@@ -139,4 +139,4 @@ Every runtime setting is an environment variable. See `.env.example`. In the hac
 
 ## License
 
-Proprietary to the VeriFY hackathon team unless otherwise agreed.
+Proprietary to the We Suffer Together hackathon team unless otherwise agreed.
