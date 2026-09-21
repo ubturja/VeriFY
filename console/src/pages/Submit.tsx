@@ -1,31 +1,24 @@
-import { FormEvent, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { api } from "../api";
 
 export function SubmitPage() {
   const { t } = useTranslation();
-  const navigate = useNavigate();
-  const [sender, setSender] = useState("");
-  const [subject, setSubject] = useState("");
-  const [body, setBody] = useState("");
-  const [paths, setPaths] = useState("");
+  const [data, setData] = useState({ subject: "", body: "" });
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [msg, setMsg] = useState("");
+  const [error, setError] = useState("");
 
-  async function onSubmit(event: FormEvent) {
-    event.preventDefault();
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
     setBusy(true);
-    setError(null);
+    setError("");
+    setMsg("");
     try {
-      const attachments = paths
-        .split("\n")
-        .map((line) => line.trim())
-        .filter(Boolean)
-        .map((path) => ({ path, filename: path.split("/").pop() }));
-      const row = await api.submit({ sender, subject, body, attachments });
-      navigate(`/cases/${row.email_id}`);
-    } catch (err) {
+      await api.submit(data);
+      setMsg("Submitted successfully");
+      setData({ subject: "", body: "" });
+    } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Submit failed");
     } finally {
       setBusy(false);
@@ -33,35 +26,53 @@ export function SubmitPage() {
   }
 
   return (
-    <section>
-      <div className="page-head">
-        <h1>{t("submit.title")}</h1>
-        <p>{t("submit.subtitle")}</p>
+    <div className="section-blur-enter h-full overflow-y-auto space-y-6">
+      <div>
+        <p className="font-mono text-xs tracking-[0.25em] text-[#8a7470] uppercase mb-1">
+          {t("submit.subtitle", "Upload")}
+        </p>
+        <h2 className="text-3xl font-display text-[#f0ebe9]">{t("submit.title", "Submit Email")}</h2>
       </div>
-      <form className="stack" onSubmit={(e) => void onSubmit(e)}>
-        <label className="field">
-          {t("submit.sender")}
-          <input value={sender} onChange={(e) => setSender(e.target.value)} />
-        </label>
-        <label className="field">
-          {t("submit.subject")}
-          <input value={subject} onChange={(e) => setSubject(e.target.value)} />
-        </label>
-        <label className="field">
-          {t("submit.body")}
-          <textarea value={body} onChange={(e) => setBody(e.target.value)} />
-        </label>
-        <label className="field">
-          {t("submit.paths")}
-          <textarea value={paths} onChange={(e) => setPaths(e.target.value)} />
-        </label>
-        {error ? <p className="muted">{error}</p> : null}
-        <div>
-          <button className="btn" disabled={busy || !subject}>
-            {busy ? t("submit.sending") : t("submit.send")}
-          </button>
-        </div>
-      </form>
-    </section>
+
+      <div className="card-glass rounded-xl p-8 max-w-2xl relative overflow-hidden">
+         <div className="absolute top-0 right-0 w-64 h-64 bg-[radial-gradient(ellipse_at_center,rgba(229,207,128,0.08)_0%,transparent_60%)] -mr-32 -mt-32 pointer-events-none blur-xl"></div>
+         <form className="space-y-6 relative z-10" onSubmit={submit}>
+            {error && <p className="text-[#e5997e] font-mono text-xs">{error}</p>}
+            {msg && <p className="text-[#7ecfa0] font-mono text-xs">{msg}</p>}
+
+            <div className="space-y-2">
+              <label className="text-xs font-mono text-[#8a7470] uppercase tracking-wide block">Subject</label>
+              <input
+                className="w-full text-sm px-4 py-3 rounded-lg transition-all focus:outline-none"
+                style={{ background: "rgba(13,10,9,0.6)", border: "1px solid rgba(142,59,49,0.15)", color: "#f0ebe9" }}
+                value={data.subject}
+                onChange={(e) => setData({ ...data, subject: e.target.value })}
+                required
+                disabled={busy}
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <label className="text-xs font-mono text-[#8a7470] uppercase tracking-wide block">Email Body / Raw Content</label>
+              <textarea
+                className="w-full text-sm px-4 py-3 rounded-lg transition-all focus:outline-none min-h-[200px]"
+                style={{ background: "rgba(13,10,9,0.6)", border: "1px solid rgba(142,59,49,0.15)", color: "#f0ebe9", resize: "vertical" }}
+                value={data.body}
+                onChange={(e) => setData({ ...data, body: e.target.value })}
+                required
+                disabled={busy}
+              />
+            </div>
+
+            <button
+               type="submit" disabled={busy}
+               className="w-full font-semibold px-4 py-3 rounded-lg transition-all hover:scale-[1.01] hover:brightness-110 disabled:opacity-50 cursor-pointer"
+               style={{ background: 'linear-gradient(135deg, #8e3b31, #b8963a)', color: '#f0ebe9', boxShadow: '0 0 20px rgba(142,59,49,0.4)' }}
+            >
+              {busy ? "Injecting to Pipeline..." : "Submit to AI Scanner"}
+            </button>
+         </form>
+      </div>
+    </div>
   );
 }
