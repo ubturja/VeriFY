@@ -1,0 +1,10 @@
+{
+  "email_id": "adv_009_renamed",
+  "from": "ops@carrier.test",
+  "subject": "Please check the draft BL",
+  "body": "Files were renamed by the customer. Please compare.",
+  "attachments": [
+    "attachments/adv_009_instruction.txt",
+    "attachments/adv_009_lading.txt"
+  ]
+}

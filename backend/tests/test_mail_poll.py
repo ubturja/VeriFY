@@ -63,7 +63,7 @@ async def test_poll_marks_seen_only_after_success(tmp_path, monkeypatch):
         def mark_seen(self, uids: list[bytes]) -> None:
             marked.extend(uids)
 
-    async def fake_pipeline(email, _read, llm=None):
+    async def fake_pipeline(email, _read, llm=None, **_kwargs):
         if email.email_id == "fail1":
             raise RuntimeError("pipeline failed")
         return PipelineResult(

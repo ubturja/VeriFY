@@ -6,6 +6,7 @@ const STORAGE_KEY = "verify.session.v1";
 export type Session = {
   token: string;
   email: string;
+  role?: "supervisor" | "reviewer" | "auditor";
 };
 
 type AuthContextValue = {

@@ -16,6 +16,7 @@ from rapidfuzz import fuzz
 
 from verify.domain.models import FieldComparison
 from verify.providers.base import LLMProvider
+from verify.services.fewshot import FewShotStore
 from verify.text.normalize import fold_party
 
 PARTY_FIELDS = {"shipper", "consignee", "notify_party"}
@@ -55,16 +56,36 @@ async def resolve_gray_band(
     comparisons: list[FieldComparison],
     *,
     llm: LLMProvider | None,
+    fewshots: FewShotStore | None = None,
 ) -> list[str]:
     """Rewrite gray-band party rows in place. Returns the list of fields that
-    the LLM flipped from MISMATCH to MATCH."""
-    if llm is None:
-        return []
+    a stored correction or the LLM flipped from MISMATCH to MATCH."""
     flipped: list[str] = []
     for item in comparisons:
         if not _in_gray_band(item):
             continue
+        remembered = fewshots.lookup(item.field, item.si_value, item.bl_value) if fewshots else None
+        if remembered is True:
+            item.match = True
+            item.confidence = max(item.confidence, 0.99)
+            item.note = "few-shot:same-entity"
+            flipped.append(item.field)
+            continue
+        if remembered is False:
+            item.note = "few-shot:distinct"
+            continue
+        if llm is None:
+            continue
+        examples = fewshots.examples(item.field) if fewshots else []
+        example_text = ""
+        if examples:
+            lines = []
+            for ex in examples:
+                verdict = "same" if ex.get("same") else "distinct"
+                lines.append(f"- SI {ex.get('si_value')!r} vs BL {ex.get('bl_value')!r} -> {verdict}")
+            example_text = "Earlier reviewer decisions:\n" + "\n".join(lines) + "\n\n"
         user = (
+            f"{example_text}"
             f"Field: {item.field}\n"
             f"SI value: {item.si_value}\n"
             f"BL value: {item.bl_value}"

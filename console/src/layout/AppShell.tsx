@@ -25,12 +25,13 @@ function getLabel(_key: string, fallback: string): string {
 
 export function AppShell() {
   const { t } = useTranslation();
-  const { session, logout } = useAuth();
+  const { session, logout, setSession } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const isWelcome = location.pathname === "/";
+  const role = session?.role ?? "supervisor";
 
   useEffect(() => {
     function onUnauthorized() {
@@ -41,6 +42,23 @@ export function AppShell() {
     return () =>
       window.removeEventListener("verify:unauthorized", onUnauthorized as EventListener);
   }, [logout, navigate]);
+
+  useEffect(() => {
+    if (!session) return;
+    api
+      .me()
+      .then((profile) => {
+        if (profile.role !== session.role) {
+          setSession({ ...session, role: profile.role });
+        }
+      })
+      .catch(() => undefined);
+  }, [session, setSession]);
+
+  async function onRole(next: "supervisor" | "reviewer" | "auditor") {
+    const updated = await api.setRole(next);
+    if (session) setSession({ ...session, email: updated.email, role: updated.role });
+  }
 
   async function onSignOut() {
     try {
@@ -133,6 +151,39 @@ export function AppShell() {
             >
               <span className="text-base w-5 text-center">🚪</span>
               <span className="font-medium">{t("nav.signOut", "Sign Out")}</span>
+    <div className="shell">
+      <aside className="sidebar">
+        <div className="brand">
+          <strong>{t("app.name")}</strong>
+          <span>{t("app.product")}</span>
+        </div>
+        <nav className="nav">
+          <NavLink to="/" end>
+            {t("nav.queue")}
+          </NavLink>
+          <NavLink to="/overview">{t("nav.dashboard")}</NavLink>
+          {role !== "auditor" ? <NavLink to="/submit">{t("nav.submit")}</NavLink> : null}
+          <NavLink to="/audit">{t("nav.audit")}</NavLink>
+          {role === "supervisor" ? <NavLink to="/policy">{t("nav.policy")}</NavLink> : null}
+          {role === "supervisor" ? <NavLink to="/webhooks">{t("nav.webhooks")}</NavLink> : null}
+          {role === "supervisor" ? <NavLink to="/dead-letters">{t("nav.dead")}</NavLink> : null}
+        </nav>
+        {session ? (
+          <div className="mailbox-card">
+            <div className="muted small">{t("nav.signedInAs")}</div>
+            <div className="mailbox-email" title={session.email}>
+              {session.email}
+            </div>
+            <label className="field">
+              <span className="muted small">{t("nav.role")}</span>
+              <select value={role} onChange={(event) => void onRole(event.target.value as typeof role)}>
+                <option value="supervisor">{t("roles.supervisor")}</option>
+                <option value="reviewer">{t("roles.reviewer")}</option>
+                <option value="auditor">{t("roles.auditor")}</option>
+              </select>
+            </label>
+            <button className="btn secondary small" type="button" onClick={() => void onSignOut()}>
+              {t("nav.signOut")}
             </button>
             {session && (
               <p className="text-xs font-mono text-[#8a7470] px-3 mt-1 truncate">

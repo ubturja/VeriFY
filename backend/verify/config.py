@@ -58,6 +58,7 @@ class Settings(BaseSettings):
     imap_folder: str = Field(default="INBOX", alias="IMAP_FOLDER")
     imap_poll_seconds: int = Field(default=30, alias="IMAP_POLL_SECONDS")
     imap_autopoll: bool = Field(default=True, alias="VERIFY_IMAP_AUTOPOLL")
+    webhook_url: str = Field(default="", alias="WEBHOOK_URL")
 
     auth_mode: str = Field(default="session", alias="VERIFY_AUTH_MODE")
     tenants_dir: Path = Field(default=Path("artifacts/tenants"), alias="VERIFY_TENANTS_DIR")

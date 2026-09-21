@@ -100,7 +100,7 @@ async def test_poll_mailbox_applies_tenant_synonyms(tmp_path, monkeypatch):
         def mark_seen(self, uids):
             pass
 
-    async def fake_pipeline(email, _read, llm=None):
+    async def fake_pipeline(email, _read, llm=None, **_kwargs):
         return PipelineResult(
             email_id=email.email_id,
             category=Category.BL_COMPARISON,

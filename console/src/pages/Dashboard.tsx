@@ -10,6 +10,10 @@ export function DashboardPage() {
     by_category?: Record<string, number>;
     confirmed: number;
     corrected: number;
+    automation_rate?: number;
+    llm_calls_per_100?: number;
+    estimated_cost_per_1000_usd?: number;
+    median_latency_ms?: number;
   } | null>(null);
 
 
@@ -94,6 +98,22 @@ export function DashboardPage() {
         <article className="card">
           <div className="label">{t("dashboard.corrected")}</div>
           <div className="value">{metrics?.corrected ?? 0}</div>
+        </article>
+        <article className="card">
+          <div className="label">{t("dashboard.automation")}</div>
+          <div className="value">{Math.round((metrics?.automation_rate ?? 0) * 100)}%</div>
+        </article>
+        <article className="card">
+          <div className="label">{t("dashboard.llmPer100")}</div>
+          <div className="value">{metrics?.llm_calls_per_100 ?? 0}</div>
+        </article>
+        <article className="card">
+          <div className="label">{t("dashboard.cost")}</div>
+          <div className="value">{metrics?.estimated_cost_per_1000_usd ?? 0}</div>
+        </article>
+        <article className="card">
+          <div className="label">{t("dashboard.latency")}</div>
+          <div className="value">{metrics?.median_latency_ms ?? 0}</div>
         </article>
       </div>
 

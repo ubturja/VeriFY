@@ -1,10 +1,9 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { api, type CaseRow } from "../api";
-
-type Comparison = NonNullable<CaseRow["result"]["comparisons"]>[number];
-type FieldEvidence = NonNullable<Comparison["si_evidence"]>;
+import { api, COMPARE_FIELDS, type CaseRow, type FieldEvidence } from "../api";
+import { useAuth } from "../auth";
+import { StatusPill } from "../components/StatusPill";
 
 const CATEGORIES = ["BL_COMPARISON", "SI_REQUEST", "INVOICE_QUERY", "GENERAL", "SPAM"] as const;
 const STATUSES = ["OK", "MISMATCH", "NEEDS_REVIEW"] as const;
@@ -31,6 +30,8 @@ function renderEvidence(evidence: FieldEvidence | null | undefined) {
 
 export function CasePage() {
   const { t } = useTranslation();
+  const { session } = useAuth();
+  const readOnly = session?.role === "auditor";
   const { id } = useParams();
   const [row, setRow] = useState<CaseRow | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -202,7 +203,7 @@ export function CasePage() {
           className="text-xs font-semibold px-4 py-2 rounded-lg transition-all hover:scale-105 disabled:opacity-50 cursor-pointer ml-auto"
           style={{ background: "linear-gradient(135deg, #8e3b31, #b8963a)", color: "#f0ebe9", boxShadow: "0 0 16px rgba(142,59,49,0.25)" }}
           onClick={() => void confirm()}
-          disabled={busy !== null || reviewed}
+          disabled={busy !== null || reviewed || readOnly}
         >
           {busy === "confirm" ? t("case.confirming") : t("case.confirm")}
         </button>
@@ -210,7 +211,7 @@ export function CasePage() {
           className="btn secondary"
           type="button"
           onClick={() => setShowCorrect((open) => !open)}
-          disabled={busy !== null}
+          disabled={busy !== null || readOnly}
         >
           {t("case.correct")}
         </button>
@@ -218,7 +219,7 @@ export function CasePage() {
           className="btn secondary"
           type="button"
           onClick={() => void retry()}
-          disabled={busy !== null}
+          disabled={busy !== null || readOnly}
         >
           {busy === "retry" ? t("case.retrying") : t("case.retry")}
         </button>
@@ -263,6 +264,33 @@ export function CasePage() {
         </section>
       ) : null}
 
+      {related && related.timeline.length ? (
+        <section className="related">
+          <h2 style={{ fontSize: 16, fontWeight: 600 }}>
+            {t("case.timeline")}{" "}
+            <span className="muted small">({related.shipment_id})</span>
+          </h2>
+          <ul>
+            {related.timeline.map((item) => (
+              <li key={item.email_id}>
+                <Link to={`/cases/${encodeURIComponent(item.email_id)}`}>
+                  {item.subject || item.email_id}
+                </Link>{" "}
+                <span className="muted small">{item.status}</span>
+                {item.pending_draft ? (
+                  <span className="muted small"> · {t("case.pendingDraft")}</span>
+                ) : null}
+                {item.paired_with ? (
+                  <span className="muted small">
+                    {" "}
+                    · {t("case.pairedWith", { id: item.paired_with })}
+                  </span>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
       {related && related.matches.length ? (
         <section className="related">
           <h2 style={{ fontSize: 16, fontWeight: 600 }}>

@@ -5,6 +5,7 @@ import pytest
 from verify.domain.models import FieldComparison
 from verify.pipeline.judge import JudgeVerdict, resolve_gray_band
 from verify.providers.base import LLMCallMeta, LLMProvider
+from verify.services.fewshot import FewShotStore
 
 
 class StubJudge(LLMProvider):
@@ -60,6 +61,28 @@ async def test_judge_skips_rows_outside_gray_band():
     flipped = await resolve_gray_band([already_matched, unrelated], llm=stub)
     assert flipped == []
     assert stub.calls == 0
+
+
+@pytest.mark.asyncio
+async def test_fewshot_applies_when_no_llm(tmp_path):
+    store = FewShotStore(tmp_path / "fewshots.json")
+    store.remember(
+        field="shipper",
+        si_value="ACME PRIVATE LIMITED",
+        bl_value="ACME PVT LTD",
+        same=True,
+    )
+    comparison = FieldComparison(
+        field="shipper",
+        si_value="ACME PRIVATE LIMITED",
+        bl_value="ACME PVT LTD",
+        match=False,
+        confidence=0.85,
+    )
+    flipped = await resolve_gray_band([comparison], llm=None, fewshots=store)
+    assert flipped == ["shipper"]
+    assert comparison.match is True
+    assert comparison.note == "few-shot:same-entity"
 
 
 def test_verdict_model_bounds():

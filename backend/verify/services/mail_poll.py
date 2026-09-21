@@ -7,13 +7,16 @@ from typing import Any
 
 from verify.config import Settings
 from verify.domain.models import EmailMessage, PipelineResult
+from verify.domain.policy import MailboxPolicy
 from verify.pipeline.orchestrator import run_pipeline
 from verify.providers.base import LLMProvider
 from verify.providers.llm.factory import NullLLMProvider
 from verify.providers.mail.imap import ImapMailSource
+from verify.services.fewshot import FewShotStore
 from verify.services.store import CaseStore
 from verify.services.synonyms import SynonymStore
 from verify.services.tenants import Tenant, TenantRegistry
+from verify.services.webhook import deliver
 
 ReadFn = Callable[[str], bytes]
 
@@ -106,6 +109,9 @@ async def poll_mailbox(
     username: str | None = None,
     app_password: str | None = None,
     synonyms: SynonymStore | None = None,
+    policy: MailboxPolicy | None = None,
+    fewshots: FewShotStore | None = None,
+    webhook_url: str | None = None,
 ) -> dict[str, Any]:
     mailbox = username or settings.imap_username
     fetched = await asyncio.to_thread(
@@ -124,10 +130,21 @@ async def poll_mailbox(
             seen_uids.append(uid)
             continue
         try:
-            result: PipelineResult = await run_pipeline(email, read, llm=model)
+            result: PipelineResult = await run_pipeline(
+                email,
+                read,
+                llm=model,
+                policy=policy,
+                fewshots=fewshots,
+                priors=store.list(),
+            )
             if synonyms is not None:
                 synonyms.apply_to_result(result)
             store.upsert(email, result)
+            case = store.get(email.email_id)
+            if case is not None:
+                record = await deliver(case, url=webhook_url)
+                store.set_webhook(email.email_id, record)
             ingested += 1
             seen_uids.append(uid)
         except Exception as exc:  # noqa: BLE001 - surfaced to caller and logged
@@ -178,6 +195,9 @@ async def poll_tenants_once(
                 username=tenant.email,
                 app_password=password,
                 synonyms=tenant.synonyms,
+                policy=tenant.policy.load(),
+                fewshots=tenant.fewshots,
+                webhook_url=settings.webhook_url,
             )
         except Exception as exc:  # noqa: BLE001 - one bad mailbox must not stop the loop
             # Store the full error on the per-tenant record so an authenticated

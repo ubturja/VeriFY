@@ -1,0 +1,10 @@
+{
+  "email_id": "adv_012_weight_round",
+  "from": "ops@carrier.test",
+  "subject": "draft BL weight rounded",
+  "body": "Please compare. Gross weight was rounded on the draft BL.",
+  "attachments": [
+    "attachments/adv_012_SI.txt",
+    "attachments/adv_012_BL.txt"
+  ]
+}
