@@ -64,6 +64,8 @@ body {
     filter: blur(0px);
     transform: translateY(0);
   }
+}
+
 .pill.corrected {
   background: var(--warn-soft);
   color: var(--warn);
@@ -116,6 +118,8 @@ body {
   background: linear-gradient(90deg, #8e3b31, #e5cf80);
   border-radius: 9999px;
   transition: width 1s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
 .cell-value {
   font-weight: 500;
 }
@@ -145,6 +149,8 @@ body {
 
 .stat-ring {
   background: conic-gradient(#e5cf80 var(--pct), rgba(37,28,26,1) 0);
+}
+
 .empty {
   padding: 48px 20px;
   text-align: center;
