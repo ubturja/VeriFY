@@ -23,7 +23,7 @@ export function WebhooksPage() {
         <p>{t("webhooks.subtitle")}</p>
       </div>
       {rows.length === 0 ? (
-        <div className="empty">{t("webhooks.empty")}</div>
+        <p className="empty">{t("webhooks.empty")}</p>
       ) : (
         <table className="table">
           <thead>

@@ -8,7 +8,9 @@ import { AuditPage } from "./pages/Audit";
 import { PolicyPage } from "./pages/Policy";
 import { WebhooksPage } from "./pages/Webhooks";
 import { DeadLettersPage } from "./pages/DeadLetters";
+import { ProfilePage } from "./pages/Profile";
 import { LoginPage } from "./pages/Login";
+import { WelcomePage } from "./pages/Welcome";
 import { AuthProvider, useAuth } from "./auth";
 
 function RequireAuth() {
@@ -31,7 +33,8 @@ export default function App() {
           <Route path="/login" element={<RedirectIfSignedIn />} />
           <Route element={<RequireAuth />}>
             <Route element={<AppShell />}>
-              <Route index element={<QueuePage />} />
+              <Route index element={<WelcomePage />} />
+              <Route path="queue" element={<QueuePage />} />
               <Route path="cases/:id" element={<CasePage />} />
               <Route path="overview" element={<DashboardPage />} />
               <Route path="submit" element={<SubmitPage />} />
@@ -39,6 +42,7 @@ export default function App() {
               <Route path="policy" element={<PolicyPage />} />
               <Route path="webhooks" element={<WebhooksPage />} />
               <Route path="dead-letters" element={<DeadLettersPage />} />
+              <Route path="profile" element={<ProfilePage />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Route>
           </Route>
@@ -47,3 +51,4 @@ export default function App() {
     </AuthProvider>
   );
 }
+

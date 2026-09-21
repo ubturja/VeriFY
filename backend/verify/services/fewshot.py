@@ -35,6 +35,9 @@ class FewShotStore:
         self._items: list[dict] = []
         self._load()
 
+    def items(self) -> list[dict]:
+        return list(self._items)
+
     def _load(self) -> None:
         if self.path.is_file():
             self._items = json.loads(self.path.read_text(encoding="utf-8")).get("items") or []

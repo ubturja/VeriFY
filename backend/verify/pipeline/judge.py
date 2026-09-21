@@ -17,6 +17,7 @@ from rapidfuzz import fuzz
 from verify.domain.models import FieldComparison
 from verify.providers.base import LLMProvider
 from verify.services.fewshot import FewShotStore
+from verify.services.party_model import PartyModel
 from verify.text.normalize import fold_party
 
 PARTY_FIELDS = {"shipper", "consignee", "notify_party"}
@@ -57,9 +58,13 @@ async def resolve_gray_band(
     *,
     llm: LLMProvider | None,
     fewshots: FewShotStore | None = None,
+    party_model: PartyModel | None = None,
 ) -> list[str]:
-    """Rewrite gray-band party rows in place. Returns the list of fields that
-    a stored correction or the LLM flipped from MISMATCH to MATCH."""
+    """Rewrite gray-band party rows in place.
+
+    Returns the fields a stored correction, the local model, or the LLM
+    flipped from MISMATCH to MATCH.
+    """
     flipped: list[str] = []
     for item in comparisons:
         if not _in_gray_band(item):
@@ -74,6 +79,18 @@ async def resolve_gray_band(
         if remembered is False:
             item.note = "few-shot:distinct"
             continue
+        if party_model is not None:
+            decision = party_model.predict(item.si_value, item.bl_value)
+            if decision is not None:
+                stamp = f"@{decision.version}"
+                if decision.same:
+                    item.match = True
+                    item.confidence = max(item.confidence, decision.confidence)
+                    item.note = f"local-model:same-entity{stamp}"
+                    flipped.append(item.field)
+                else:
+                    item.note = f"local-model:distinct{stamp}"
+                continue
         if llm is None:
             continue
         examples = fewshots.examples(item.field) if fewshots else []

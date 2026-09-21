@@ -29,6 +29,7 @@ from verify.pipeline.judge import resolve_gray_band
 from verify.providers.base import LLMProvider
 from verify.services.fewshot import FewShotStore
 from verify.services.pairing import mark_pending, pair_id, prior_si, shipment_ref
+from verify.services.party_model import PartyModel, version_from_notes
 from verify.services.usage import finish_usage, start_usage
 from verify.version import PROMPT_VERSION, RULES_MODEL_VERSION
 
@@ -53,7 +54,11 @@ async def run_pipeline(
     result.usage = UsageSummaryModel.model_validate(summary.model_dump())
     result.latency_ms = int((time.perf_counter() - started) * 1000)
     result.prompt_version = PROMPT_VERSION
-    result.model_version = summary.models[0] if summary.models else RULES_MODEL_VERSION
+    local_version = version_from_notes([item.note or "" for item in result.comparisons])
+    if local_version:
+        result.model_version = local_version
+    else:
+        result.model_version = summary.models[0] if summary.models else RULES_MODEL_VERSION
     return result
 
 
@@ -206,8 +211,14 @@ async def _compare_case(
         )
 
     comparisons = compare_documents(si, bl, policy=policy)
-    if llm is not None or fewshots is not None:
-        flipped = await resolve_gray_band(comparisons, llm=llm, fewshots=fewshots)
+    party_model = PartyModel(fewshots.path.with_name("party_model.json")) if fewshots is not None else None
+    if llm is not None or fewshots is not None or (party_model is not None and party_model.ready):
+        flipped = await resolve_gray_band(
+            comparisons,
+            llm=llm,
+            fewshots=fewshots,
+            party_model=party_model,
+        )
         if flipped:
             llm_notes.append(f"judge-flipped:{','.join(flipped)}")
     linked = pair_id(email.subject, email.body, priors)

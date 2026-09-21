@@ -18,7 +18,10 @@ export function LoginPage() {
     setBusy(true);
     setError(null);
     try {
-      const session = await api.login({ email: email.trim(), app_password: appPassword });
+      const session = await api.login({
+        email: email.trim(),
+        app_password: appPassword.replace(/\s+/g, ""),
+      });
       setSession(session);
       navigate("/", { replace: true });
     } catch (err) {
@@ -31,13 +34,13 @@ export function LoginPage() {
   return (
     <div className="login-shell">
       <section className="login-card">
-        <div className="brand">
+        <div className="brand" style={{ marginBottom: 20 }}>
           <strong>{t("app.name")}</strong>
           <span>{t("app.product")}</span>
         </div>
         <h1>{t("login.title")}</h1>
         <p className="muted">{t("login.subtitle")}</p>
-        <form className="stack login-form" onSubmit={(e) => void onSubmit(e)}>
+        <form className="stack" onSubmit={(e) => void onSubmit(e)} style={{ marginTop: 20 }}>
           <label className="field">
             <span>{t("login.email")}</span>
             <input

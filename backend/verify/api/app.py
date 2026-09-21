@@ -15,7 +15,7 @@ from verify.domain.policy import MailboxPolicy
 from verify.pipeline.orchestrator import run_pipeline
 from verify.providers.llm.factory import NullLLMProvider, build_llm
 from verify.providers.mail.hackathon import HackathonMailSource
-from verify.providers.mail.imap import ImapMailSource
+from verify.providers.mail.imap import ImapMailSource, normalize_app_password
 from verify.services.attachments import read_attachment, safe_blob_segment, write_inline_attachment
 from verify.services.jobqueue import JobQueue
 from verify.services.mail_poll import (
@@ -24,6 +24,7 @@ from verify.services.mail_poll import (
     poll_state,
     poll_state_for,
 )
+from verify.services.party_model import PartyModel
 from verify.services.reply import build_reply
 from verify.services.shipments import related_cases, shipment_id_for
 from verify.services.tenants import Tenant, TenantRegistry, normalize_email, secret_key_or_dev
@@ -264,16 +265,17 @@ async def login(body: LoginBody) -> dict[str, str]:
         email = normalize_email(body.email)
     except ValueError as exc:
         raise HTTPException(400, str(exc)) from exc
-    if not body.app_password:
+    password = normalize_app_password(body.app_password)
+    if not password:
         raise HTTPException(400, "Gmail app password is required.")
-    source = ImapMailSource(settings, username=email, app_password=body.app_password)
+    source = ImapMailSource(settings, username=email, app_password=password)
     try:
         await asyncio.to_thread(source.verify_login)
     except ValueError as exc:
         raise HTTPException(401, str(exc)) from exc
     except OSError as exc:
         raise HTTPException(502, f"Gmail unreachable: {exc}") from exc
-    tenant = tenants.ensure(email, app_password=body.app_password)
+    tenant = tenants.ensure(email, app_password=password)
     token = tenants.issue_token(tenant)
     return {"token": token, "email": tenant.email}
 
@@ -524,6 +526,7 @@ async def correct_case(
             "note": body.note,
         }
     )
+    PartyModel(tenant.fewshots.path.with_name("party_model.json")).retrain(tenant.fewshots.items())
     return row
 
 

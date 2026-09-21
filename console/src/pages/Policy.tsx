@@ -8,13 +8,19 @@ export function PolicyPage() {
   const [mandatory, setMandatory] = useState<string[]>([...COMPARE_FIELDS]);
   const [mayDiffer, setMayDiffer] = useState<string[]>([]);
   const [message, setMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    api.policy().then((policy) => {
-      setTolerance(policy.weight_tolerance_kg);
-      setMandatory(policy.mandatory_fields);
-      setMayDiffer(policy.fields_may_differ);
-    });
+    api
+      .policy()
+      .then((policy) => {
+        setTolerance(policy.weight_tolerance_kg);
+        setMandatory(policy.mandatory_fields);
+        setMayDiffer(policy.fields_may_differ);
+      })
+      .catch((err: unknown) => {
+        setError(err instanceof Error ? err.message : "Unable to load policy");
+      });
   }, []);
 
   function toggle(list: string[], field: string, set: (next: string[]) => void) {
@@ -23,6 +29,7 @@ export function PolicyPage() {
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
+    setError(null);
     setMessage(null);
     try {
       await api.savePolicy({
@@ -32,7 +39,7 @@ export function PolicyPage() {
       });
       setMessage(t("policy.saved"));
     } catch (err) {
-      setMessage(err instanceof Error ? err.message : "Save failed");
+      setError(err instanceof Error ? err.message : "Save failed");
     }
   }
 
@@ -81,6 +88,7 @@ export function PolicyPage() {
         <button className="btn" type="submit">
           {t("policy.save")}
         </button>
+        {error ? <p className="form-error">{error}</p> : null}
         {message ? <p className="muted">{message}</p> : null}
       </form>
     </section>

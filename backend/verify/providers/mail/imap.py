@@ -14,6 +14,30 @@ from verify.domain.models import AttachmentRef, EmailMessage
 from verify.providers.base import MailSource
 
 
+def normalize_app_password(value: str | None) -> str:
+    """Google shows an app password as four groups of four. IMAP needs the 16
+    characters with the spaces removed. The account password is a different secret.
+    """
+    return re.sub(r"\s+", "", value or "")
+
+
+def gmail_login_error(exc: imaplib.IMAP4.error, password: str) -> ValueError:
+    raw = exc.args[0] if exc.args else ""
+    text = raw.decode("utf-8", errors="replace") if isinstance(raw, bytes) else str(raw)
+    folded = text.casefold()
+    if "web browser" in folded or "imap access" in folded:
+        return ValueError(
+            "Gmail blocked IMAP for this mailbox. Turn on IMAP in Gmail settings, "
+            "then sign in with an app password."
+        )
+    if len(password) != 16 or not password.isalnum():
+        return ValueError(
+            "Gmail rejected the sign-in. Paste the 16-character app password "
+            "from Google Account, not the normal account password."
+        )
+    return ValueError("Gmail rejected the credentials. Check the app password and try again.")
+
+
 def safe_email_id(raw: str | None) -> str:
     cleaned = (raw or "").strip().strip("<>")
     cleaned = re.sub(r"[^A-Za-z0-9._@+-]+", "_", cleaned)
@@ -43,8 +67,9 @@ class ImapMailSource(MailSource):
         app_password: str | None = None,
     ) -> None:
         self.settings = settings
-        self.username = username if username is not None else settings.imap_username
-        self.app_password = app_password if app_password is not None else settings.imap_app_password
+        self.username = (username if username is not None else settings.imap_username or "").strip()
+        raw_password = app_password if app_password is not None else settings.imap_app_password
+        self.app_password = normalize_app_password(raw_password)
         slug = re.sub(r"[^A-Za-z0-9._@+-]+", "_", self.username or "default") or "default"
         self.blob_root = settings.local_blob_dir / "imap" / slug
         self.blob_root.mkdir(parents=True, exist_ok=True)
@@ -60,8 +85,8 @@ class ImapMailSource(MailSource):
         client = imaplib.IMAP4_SSL(self.settings.imap_host, self.settings.imap_port)
         try:
             client.login(self.username, self.app_password)
-        except imaplib.IMAP4.error as exc:  # pragma: no cover - live-only
-            raise ValueError("Gmail rejected the credentials.") from exc
+        except imaplib.IMAP4.error as exc:
+            raise gmail_login_error(exc, self.app_password) from exc
         finally:
             try:
                 client.logout()

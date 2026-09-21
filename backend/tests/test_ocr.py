@@ -7,19 +7,10 @@ import io
 import pytest
 
 from verify.pipeline.extract import extract_from_bytes
+from verify.pipeline.ocr import tesseract_available
 
 
-def _tesseract_ready() -> bool:
-    try:
-        import pytesseract
-
-        pytesseract.get_tesseract_version()
-        return True
-    except Exception:
-        return False
-
-
-@pytest.mark.skipif(not _tesseract_ready(), reason="tesseract is not installed")
+@pytest.mark.skipif(not tesseract_available(), reason="tesseract is not installed")
 def test_scanned_pdf_is_read_by_ocr():
     from PIL import Image, ImageDraw, ImageFont
 

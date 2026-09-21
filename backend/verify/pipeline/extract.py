@@ -207,19 +207,60 @@ def _harvest_pdf_totals(filename: str, text: str, fields: dict[str, ExtractedFie
             fields["gross_weight_kg"] = _field("gross_weight_kg", match.group(1), filename, "pdf:gross")
 
 
-def _pdf_layout_fields(filename: str, payload: bytes) -> dict[str, ExtractedField]:
-    """Use x-position so labels on the left are not merged with values on the right."""
-    import pdfplumber
+def _values_from_chars(chars: list[dict]) -> dict[str, str]:
+    """Split a line by font. Bold is the label, the other face is the value.
 
-    from verify.text.labels import canonical_field
+    Two-column shipping PDFs draw the label and the value on the same baseline,
+    and pdfplumber then fuses them into one word. The font name still separates
+    them, so a label that canonicalises to a compare field yields the other
+    face's text as the value.
+    """
+    rows: dict[int, list[dict]] = {}
+    for char in chars:
+        text = char.get("text") or ""
+        if not text.strip() and text != " ":
+            continue
+        key = int(round(float(char.get("top") or 0)))
+        rows.setdefault(key, []).append(char)
+    found: dict[str, str] = {}
+    for glyphs in rows.values():
+        by_font: dict[str, list[dict]] = {}
+        for char in glyphs:
+            by_font.setdefault(str(char.get("fontname") or ""), []).append(char)
+        if len(by_font) < 2:
+            continue
+        groups: list[tuple[float, str]] = []
+        for font_glyphs in by_font.values():
+            font_glyphs.sort(key=lambda item: float(item.get("x0") or 0))
+            text = collapse_ws("".join(item.get("text") or "" for item in font_glyphs))
+            if text:
+                groups.append((float(font_glyphs[0].get("x0") or 0), text))
+        groups.sort(key=lambda item: item[0])
+        for index, (_x, text) in enumerate(groups):
+            field = canonical_field(text)
+            if field is None or field in found:
+                continue
+            for _x2, candidate in groups[index + 1 :]:
+                if canonical_field(candidate) is None:
+                    found[field] = candidate
+                    break
+    return found
+
+
+def _pdf_layout_fields(filename: str, payload: bytes) -> dict[str, ExtractedField]:
+    """Recover two-column values by font, then by x-position."""
+    import pdfplumber
 
     fields: dict[str, ExtractedField] = {}
     try:
         with pdfplumber.open(io.BytesIO(payload)) as pdf:
             page = pdf.pages[0]
+            chars = list(page.chars or [])
             words = page.extract_words() or []
     except Exception:
         return fields
+    for name, value in _values_from_chars(chars).items():
+        fields[name] = _field(name, value, filename, f"pdf-font:{name}")
     rows: dict[int, list[dict]] = {}
     for word in words:
         key = int(round(float(word["top"]) / 3) * 3)
