@@ -49,7 +49,9 @@
     "note": "Reviewer note (optional)",
     "noteHint": "Why this verdict is accepted",
     "email": "Email",
-    "noCompare": "This message was classified only. No document comparison was required."
+    "attachments": "Attachments",
+    "noCompare": "This message was classified only. No document comparison was required.",
+    "missingDocs": "This message was classified as a BL comparison, but an SI and draft BL pair was not identified from the attachments."
   },
   "dashboard": {
     "title": "Operations overview",

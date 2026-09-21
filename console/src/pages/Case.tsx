@@ -104,8 +104,22 @@ export function CasePage() {
           />
         </label>
       )}
+      {row.attachments.length > 0 ? (
+        <>
+          <h2 style={{ fontSize: 16, fontWeight: 600 }}>{t("case.attachments")}</h2>
+          <ul className="attachment-list">
+            {row.attachments.map((item) => (
+              <li key={`${item.path}-${item.filename}`}>{item.filename}</li>
+            ))}
+          </ul>
+        </>
+      ) : null}
       {comparisons.length === 0 ? (
-        <p className="muted">{t("case.noCompare")}</p>
+        <p className="muted">
+          {row.result.review_reason === "missing_attachment"
+            ? t("case.missingDocs")
+            : t("case.noCompare")}
+        </p>
       ) : (
         <>
           <h2 style={{ fontSize: 16, fontWeight: 600 }}>{t("case.fields")}</h2>

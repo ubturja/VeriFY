@@ -281,8 +281,9 @@ a {
   color: var(--ink-soft);
 }
 
-.muted {
-  color: var(--ink-soft);
+.attachment-list {
+  margin: 0 0 24px;
+  padding-left: 20px;
 }
 
 .stack {

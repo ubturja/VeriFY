@@ -17,6 +17,7 @@ from verify.domain.models import (
 )
 from verify.pipeline.classify import classify
 from verify.pipeline.compare import compare_documents
+from verify.pipeline.doctype import is_inline_noise
 from verify.pipeline.extract import extract_from_bytes
 from verify.providers.base import LLMProvider
 
@@ -69,7 +70,7 @@ def _compare_case(
         )
 
     documents: list[ExtractedDocument] = []
-    for attachment in email.attachments:
+    for attachment in _document_attachments(email):
         payload = read_bytes(attachment.path)
         documents.append(extract_from_bytes(attachment.filename, payload))
 
@@ -159,11 +160,17 @@ def _compare_case(
     )
 
 
+def _document_attachments(email: EmailMessage):
+    return [item for item in email.attachments if not is_inline_noise(item.filename)]
+
+
 def _has_pair(email: EmailMessage) -> bool:
-    names = [a.filename.lower() for a in email.attachments]
-    has_si = any("_si." in name or name.endswith("_si") for name in names)
-    has_bl = any("_bl." in name or name.endswith("_bl") for name in names)
-    return len(email.attachments) >= 2 and has_si and has_bl
+    """True when there are at least two real documents to compare.
+
+    Hackathon files are named email_009_SI.txt. Live Gmail files are often
+    SI-live-test.txt or arbitrary PDF names. Inline images are ignored.
+    """
+    return len(_document_attachments(email)) >= 2
 
 
 def _pick(documents: list[ExtractedDocument], kind: DocumentKind) -> ExtractedDocument | None:
