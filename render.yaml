@@ -39,7 +39,6 @@ services:
   - type: web
     name: verify-console
     runtime: static
-    plan: free
     rootDir: console
     buildCommand: npm ci && npm run build
     staticPublishPath: dist
