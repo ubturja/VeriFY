@@ -1,7 +1,10 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { api, type CaseRow } from "../api";
+import { api,  type CaseRow,  COMPARE_FIELDS,} from "../api";
+
+type Comparison = NonNullable<CaseRow["result"]["comparisons"]>[number];
+type FieldEvidence = NonNullable<Comparison["si_evidence"]>;
 
 const CATEGORIES = ["BL_COMPARISON", "SI_REQUEST", "INVOICE_QUERY", "GENERAL", "SPAM"] as const;
 const STATUSES = ["OK", "MISMATCH", "NEEDS_REVIEW"] as const;
@@ -17,7 +20,10 @@ function renderEvidence(evidence: FieldEvidence | null | undefined) {
   if (!evidence) return null;
   const label = `${attachmentLeaf(evidence.attachment)} · ${evidence.locator}`;
   return (
-    <div className="evidence-line" title={evidence.snippet || undefined}>
+    <div
+      className="text-[11px] font-mono text-[#8a7470] mt-1 break-words"
+      title={evidence.snippet || undefined}
+    >
       {label}
     </div>
   );
@@ -37,9 +43,9 @@ export function CasePage() {
   const [defects, setDefects] = useState<string[]>([]);
   const [reply, setReply] = useState<{ subject: string; body: string; to: string } | null>(null);
   const [replyBusy, setReplyBusy] = useState(false);
-  const [related, setRelated] = useState<
-    { shipment_id: string | null; matches: { email_id: string; subject: string; status: string }[] } | null
-  >(null);
+  const [related, setRelated] = useState
+  { shipment_id: string | null; matches: { email_id: string; subject: string; status: string } [] } | null
+    > (null);
 
   useEffect(() => {
     if (!id) return;
@@ -144,12 +150,18 @@ export function CasePage() {
   const corrected = row.review?.action === "correct";
   const reviewed = confirmed || corrected;
 
+  const ok = comparisons.filter((c) => c.match === true).length;
+  const mismatch = comparisons.filter((c) => c.match === false).length;
+  const unsure = comparisons.filter((c) => c.match == null).length;
+
+  const compareFields = Array.from(new Set([...comparisons.map((c) => c.field), ...defects]));
+
   return (
     <div className="section-blur-enter h-full overflow-y-auto space-y-6">
       <Link to="/" className="text-sm font-mono text-[#8a7470] hover:text-[#e5cf80] transition-colors inline-block">
         ← {t("case.back")}
       </Link>
-      
+
       <div>
         <p className="font-mono text-xs tracking-[0.25em] text-[#8a7470] uppercase mb-1">
           {row.from} · {t(`category.${row.result.category}`)}
@@ -158,26 +170,32 @@ export function CasePage() {
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
-        <span className="text-xs font-mono px-2 py-0.5 rounded-sm font-medium tracking-wide"
-          style={{ background: 'rgba(229,153,126,0.12)', border: '1px solid rgba(229,153,126,0.3)', color: '#e5cf80' }}>
+        <span
+          className="text-xs font-mono px-2 py-0.5 rounded-sm font-medium tracking-wide"
+          style={{ background: "rgba(229,153,126,0.12)", border: "1px solid rgba(229,153,126,0.3)", color: "#e5cf80" }}
+        >
           {row.result.status}
         </span>
         {row.result.review_reason && (
-          <span className="text-xs font-mono px-2 py-0.5 rounded-sm font-medium tracking-wide"
-            style={{ background: 'rgba(229,207,128,0.12)', border: '1px solid rgba(229,207,128,0.35)', color: '#e5cf80' }}>
+          <span
+            className="text-xs font-mono px-2 py-0.5 rounded-sm font-medium tracking-wide"
+            style={{ background: "rgba(229,207,128,0.12)", border: "1px solid rgba(229,207,128,0.35)", color: "#e5cf80" }}
+          >
             {row.result.review_reason}
           </span>
         )}
         {confirmed && (
-          <span className="text-xs font-mono px-2 py-0.5 rounded-sm font-medium tracking-wide"
-            style={{ background: 'rgba(126,207,160,0.12)', border: '1px solid rgba(126,207,160,0.35)', color: '#7ecfa0' }}>
+          <span
+            className="text-xs font-mono px-2 py-0.5 rounded-sm font-medium tracking-wide"
+            style={{ background: "rgba(126,207,160,0.12)", border: "1px solid rgba(126,207,160,0.35)", color: "#7ecfa0" }}
+          >
             {t("case.confirmed")}
           </span>
         )}
-        
+
         <button
           className="text-xs font-semibold px-4 py-2 rounded-lg transition-all hover:scale-105 disabled:opacity-50 cursor-pointer ml-auto"
-          style={{ background: 'linear-gradient(135deg, #8e3b31, #b8963a)', color: '#f0ebe9', boxShadow: '0 0 16px rgba(142,59,49,0.25)' }}
+          style={{ background: "linear-gradient(135deg, #8e3b31, #b8963a)", color: "#f0ebe9", boxShadow: "0 0 16px rgba(142,59,49,0.25)" }}
           onClick={() => void confirm()}
           disabled={busy !== null || reviewed}
         >
@@ -209,7 +227,7 @@ export function CasePage() {
         </button>
       </div>
 
-       {reply ? (
+      {reply ? (
         <section className="reply-panel">
           <div className="reply-head">
             <span>{t("case.replySubject")}: {reply.subject}</span>
@@ -239,6 +257,7 @@ export function CasePage() {
           </div>
         </section>
       ) : null}
+
       {related && related.matches.length ? (
         <section className="related">
           <h2 style={{ fontSize: 16, fontWeight: 600 }}>
@@ -318,7 +337,7 @@ export function CasePage() {
           {status === "MISMATCH" ? (
             <fieldset className="defect-fields">
               <legend>{t("case.defectFields")}</legend>
-              {COMPARE_FIELDS.map((field) => (
+              {compareFields.map((field) => (
                 <label key={field}>
                   <input
                     type="checkbox"
@@ -336,8 +355,24 @@ export function CasePage() {
             <input
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              placeholder={t("case.correctNoteHint")}     
-      
+              placeholder={t("case.correctNoteHint")}
+              disabled={busy !== null}
+            />
+          </label>
+          <div>
+            <button
+              className="text-xs font-semibold px-4 py-2 rounded-lg transition-all hover:scale-105 disabled:opacity-50 cursor-pointer"
+              style={{ background: "linear-gradient(135deg, #8e3b31, #b8963a)", color: "#f0ebe9", boxShadow: "0 0 16px rgba(142,59,49,0.25)" }}
+              type="submit"
+              disabled={busy !== null}
+            >
+              {busy === "correct" ? t("case.correcting") : t("case.saveCorrection")}
+            </button>
+          </div>
+        </form>
+      ) : !reviewed ? (
+        <div className="card-glass rounded-xl p-5 space-y-3">
+          <p className="text-xs font-mono text-[#8a7470] uppercase tracking-wide">{t("case.note")}</p>
           <input
             className="w-full max-w-md text-sm px-3 py-2 rounded-lg transition-all focus:outline-none"
             style={{ background: "rgba(13,10,9,0.6)", border: "1px solid rgba(142,59,49,0.15)", color: "#f0ebe9" }}
@@ -346,35 +381,28 @@ export function CasePage() {
             placeholder={t("case.noteHint")}
             disabled={busy !== null}
           />
-        </label>
+        </div>
       ) : null}
-      {row.attachments.length > 0 ? (
-        <>
-          <h2 style={{ fontSize: 16, fontWeight: 600 }}>{t("case.attachments")}</h2>
-          <ul className="attachment-list">
-            {row.attachments.map((item) => (
-              <li key={`${item.path}-${item.filename}`}>{item.filename}</li>
-            ))}
-          </ul>
-        </>
-      ) : null}
+
       {comparisons.length === 0 ? (
         <div className="card-glass rounded-xl p-5 text-sm font-mono text-[#8a7470]">
-           {row.result.review_reason === "missing_attachment"
+          {row.result.review_reason === "missing_attachment"
             ? t("case.missingDocs")
             : t("case.noCompare")}
         </div>
       ) : (
-
-                 <div className="space-y-4">
+        <div className="space-y-4">
           <div className="grid grid-cols-3 gap-3">
             {[
-              { label: 'Matched', val: ok, color: '#7ecfa0', bg: 'rgba(126,207,160,0.08)', border: 'rgba(126,207,160,0.25)' },
-              { label: 'Discrepancies', val: mismatch, color: '#e5997e', bg: 'rgba(229,153,126,0.08)', border: 'rgba(229,153,126,0.3)' },
-              { label: 'Unsure', val: unsure, color: '#e5cf80', bg: 'rgba(229,207,128,0.08)', border: 'rgba(229,207,128,0.25)' },
-            ].map(s => (
-              <div key={s.label} className="rounded-xl p-4 text-center"
-                style={{ background: s.bg, border: `1px solid ${s.border}` }}>
+              { label: "Matched", val: ok, color: "#7ecfa0", bg: "rgba(126,207,160,0.08)", border: "rgba(126,207,160,0.25)" },
+              { label: "Discrepancies", val: mismatch, color: "#e5997e", bg: "rgba(229,153,126,0.08)", border: "rgba(229,153,126,0.3)" },
+              { label: "Unsure", val: unsure, color: "#e5cf80", bg: "rgba(229,207,128,0.08)", border: "rgba(229,207,128,0.25)" },
+            ].map((s) => (
+              <div
+                key={s.label}
+                className="rounded-xl p-4 text-center"
+                style={{ background: s.bg, border: `1px solid ${s.border}` }}
+              >
                 <p className="text-3xl font-semibold font-display" style={{ color: s.color }}>{s.val}</p>
                 <p className="text-xs font-mono mt-1" style={{ color: s.color }}>{s.label}</p>
               </div>
@@ -382,81 +410,68 @@ export function CasePage() {
           </div>
 
           <h2 style={{ fontSize: 16, fontWeight: 600 }}>{t("case.fields")}</h2>
-          <div className="compare">
-            <div className="head">Field</div>
-            <div className="head">{t("case.si")}</div>
-            <div className="head">{t("case.bl")}</div>
-            <div className="head">Result</div>
-            {comparisons.map((item) => (
-              <div key={item.field} style={{ display: "contents" }}>
-                <div>{item.field.replaceAll("_", " ")}</div>
-                <div>
-                  <div className="cell-value">{item.si_value ?? "-"}</div>
-                  {renderEvidence(item.si_evidence)}
-                </div>
-                <div>
-                  <div className="cell-value">{item.bl_value ?? "-"}</div>
-                  {renderEvidence(item.bl_evidence)}
-                </div>
-                <div>
-                  <div>
-                    {item.match === true ? "Match" : item.match === false ? "Differ" : "Unsure"}
-                  </div>
-                  {item.note ? <div className="evidence-line">{item.note}</div> : null}
-                </div>       
-               
-            ))}
-          </div>
 
           <div className="card-glass rounded-xl overflow-hidden">
             <div className="px-5 py-3 border-b border-[rgba(142,59,49,0.2)] grid grid-cols-12 text-xs font-mono text-[#8a7470] uppercase tracking-wide">
               <div className="col-span-3">Field</div>
-              <div className="col-span-3">SI Value</div>
-              <div className="col-span-3">BL Value</div>
+              <div className="col-span-3">{t("case.si")}</div>
+              <div className="col-span-3">{t("case.bl")}</div>
               <div className="col-span-3 text-right">Result</div>
             </div>
-            {comparisons.map(r => {
+            {comparisons.map((r) => {
               const isDisc = r.match === false;
-              const isMissing = r.match === null;
+              const isMissing = r.match == null;
               return (
-                <div key={r.field}
+                <div
+                  key={r.field}
                   className="px-5 py-3.5 grid grid-cols-12 gap-2 items-start text-xs border-b border-[rgba(142,59,49,0.1)] transition-all hover:bg-[rgba(142,59,49,0.04)]"
-                  style={{ background: isDisc ? 'rgba(229,153,126,0.04)' : isMissing ? 'rgba(229,207,128,0.03)' : undefined }}>
-                  <div className="col-span-3 font-mono font-medium text-[#f0ebe9]">{r.field.replaceAll("_", " ")}</div>
-                  <div className="col-span-3 text-[#f0ebe9] leading-relaxed">{r.si_value ?? "—"}</div>
-                  <div className="col-span-3" style={{ color: isDisc ? '#e5997e' : isMissing ? '#e5cf80' : '#f0ebe9' }}>
-                    {r.bl_value ?? <em className="text-[#8a7470]">not stated</em>}
+                  style={{ background: isDisc ? "rgba(229,153,126,0.04)" : isMissing ? "rgba(229,207,128,0.03)" : undefined }}
+                >
+                  <div className="col-span-3 font-mono font-medium text-[#f0ebe9]">
+                    {r.field.replaceAll("_", " ")}
+                  </div>
+                  <div className="col-span-3">
+                    <div className="text-[#f0ebe9] leading-relaxed">{r.si_value ?? "—"}</div>
+                    {renderEvidence(r.si_evidence)}
+                  </div>
+                  <div className="col-span-3">
+                    <div style={{ color: isDisc ? "#e5997e" : isMissing ? "#e5cf80" : "#f0ebe9" }}>
+                      {r.bl_value ?? <em className="text-[#8a7470]">not stated</em>}
+                    </div>
+                    {renderEvidence(r.bl_evidence)}
                   </div>
                   <div className="col-span-3 text-right">
                     {r.match === true && <span className="font-mono text-[#7ecfa0]">✓ Match</span>}
                     {r.match === false && <span className="font-mono text-[#e5997e] font-semibold">⚠ Differs</span>}
-                    {r.match === null && <span className="font-mono text-[#e5cf80]">— Unsure</span>}
+                    {r.match == null && <span className="font-mono text-[#e5cf80]">— Unsure</span>}
+                    {r.note ? (
+                      <p className="text-[11px] font-mono text-[#8a7470] mt-1 break-words">{r.note}</p>
+                    ) : null}
                   </div>
                 </div>
-              )
+              );
             })}
           </div>
         </div>
       )}
 
       {row.attachments.length > 0 && (
-         <div className="card-glass rounded-xl p-5 space-y-3">
-             <p className="text-sm font-semibold text-[#f0ebe9]">{t("case.attachments")}</p>
-             <ul className="text-xs font-mono text-[#8a7470] space-y-1">
-                 {row.attachments.map((item) => (
-                    <li key={`${item.path}-${item.filename}`}>{item.filename}</li>
-                 ))}
-             </ul>
-         </div>
+        <div className="card-glass rounded-xl p-5 space-y-3">
+          <p className="text-sm font-semibold text-[#f0ebe9]">{t("case.attachments")}</p>
+          <ul className="text-xs font-mono text-[#8a7470] space-y-1">
+            {row.attachments.map((item) => (
+              <li key={`${item.path}-${item.filename}`}>{item.filename}</li>
+            ))}
+          </ul>
+        </div>
       )}
 
       <div className="card-glass rounded-xl p-5 space-y-3">
-          <p className="text-xs font-mono text-[#8a7470] uppercase tracking-wide">{t("case.email")}</p>
-          <pre className="text-xs font-mono text-[#f0ebe9] whitespace-pre-wrap leading-relaxed max-height-96 overflow-y-auto w-full p-4 rounded-lg bg-[rgba(13,10,9,0.6)] border border-[rgba(142,59,49,0.15)]">
-              {row.body}
-          </pre>
+        <p className="text-xs font-mono text-[#8a7470] uppercase tracking-wide">{t("case.email")}</p>
+        <pre className="text-xs font-mono text-[#f0ebe9] whitespace-pre-wrap leading-relaxed max-h-96 overflow-y-auto w-full p-4 rounded-lg bg-[rgba(13,10,9,0.6)] border border-[rgba(142,59,49,0.15)]">
+          {row.body}
+        </pre>
       </div>
-
     </div>
   );
 }

@@ -12,12 +12,20 @@ export function DashboardPage() {
     corrected: number;
   } | null>(null);
 
-  useEffect(() => {
+
+    useEffect(() => {
     api
       .metrics()
       .then(setMetrics)
-      .catch(() => setMetrics({ total: 0, by_status: {}, by_category: {}, confirmed: 0 }));
-      .catch(() => setMetrics({ total: 0, by_status: {}, confirmed: 0, corrected: 0 }));
+      .catch(() =>
+        setMetrics({
+          total: 0,
+          by_status: {},
+          by_category: {},
+          confirmed: 0,
+          corrected: 0,
+        }),
+      );
   }, []);
 
   const by = metrics?.by_status ?? {};
