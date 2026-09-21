@@ -1,12 +1,28 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
-import { api, COMPARE_FIELDS, type CaseRow } from "../api";
+import { api, COMPARE_FIELDS, type CaseRow, type FieldEvidence } from "../api";
 import { StatusPill } from "../components/StatusPill";
 
 const CATEGORIES = ["BL_COMPARISON", "SI_REQUEST", "INVOICE_QUERY", "GENERAL", "SPAM"] as const;
 const STATUSES = ["OK", "MISMATCH", "NEEDS_REVIEW"] as const;
 const REASONS = ["wrong_doc_type", "missing_attachment", "unreadable", "missing_value"] as const;
+
+function attachmentLeaf(path: string): string {
+  const cleaned = path.replaceAll("\\", "/");
+  const parts = cleaned.split("/");
+  return parts[parts.length - 1] || path;
+}
+
+function renderEvidence(evidence: FieldEvidence | null | undefined) {
+  if (!evidence) return null;
+  const label = `${attachmentLeaf(evidence.attachment)} · ${evidence.locator}`;
+  return (
+    <div className="evidence-line" title={evidence.snippet || undefined}>
+      {label}
+    </div>
+  );
+}
 
 export function CasePage() {
   const { t } = useTranslation();
@@ -20,6 +36,11 @@ export function CasePage() {
   const [status, setStatus] = useState("");
   const [reason, setReason] = useState("");
   const [defects, setDefects] = useState<string[]>([]);
+  const [reply, setReply] = useState<{ subject: string; body: string; to: string } | null>(null);
+  const [replyBusy, setReplyBusy] = useState(false);
+  const [related, setRelated] = useState<
+    { shipment_id: string | null; matches: { email_id: string; subject: string; status: string }[] } | null
+  >(null);
 
   useEffect(() => {
     if (!id) return;
@@ -33,7 +54,23 @@ export function CasePage() {
         setDefects(next.result.defect_fields ?? []);
       })
       .catch((err: unknown) => setError(err instanceof Error ? err.message : "Not found"));
+    api
+      .related(id)
+      .then(setRelated)
+      .catch(() => setRelated(null));
   }, [id]);
+
+  async function loadReply() {
+    if (!id) return;
+    setReplyBusy(true);
+    try {
+      setReply(await api.replyDraft(id));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Reply draft failed");
+    } finally {
+      setReplyBusy(false);
+    }
+  }
 
   function applyRow(next: CaseRow) {
     setRow(next);
@@ -150,7 +187,63 @@ export function CasePage() {
         >
           {busy === "retry" ? t("case.retrying") : t("case.retry")}
         </button>
+        <button
+          className="btn secondary"
+          type="button"
+          onClick={() => void loadReply()}
+          disabled={replyBusy}
+        >
+          {replyBusy ? t("case.replyLoading") : t("case.reply")}
+        </button>
       </div>
+      {reply ? (
+        <section className="reply-panel">
+          <div className="reply-head">
+            <span>{t("case.replySubject")}: {reply.subject}</span>
+            <span className="muted small">
+              {t("case.replyTo")}: {reply.to || "-"}
+            </span>
+          </div>
+          <textarea readOnly value={reply.body} />
+          <div>
+            <button
+              className="btn secondary small"
+              type="button"
+              onClick={() => {
+                void navigator.clipboard?.writeText(reply.body);
+              }}
+            >
+              {t("case.copyReply")}
+            </button>
+            <button
+              className="btn secondary small"
+              type="button"
+              onClick={() => setReply(null)}
+              style={{ marginLeft: 8 }}
+            >
+              {t("case.dismissReply")}
+            </button>
+          </div>
+        </section>
+      ) : null}
+      {related && related.matches.length ? (
+        <section className="related">
+          <h2 style={{ fontSize: 16, fontWeight: 600 }}>
+            {t("case.related")}{" "}
+            <span className="muted small">({related.shipment_id})</span>
+          </h2>
+          <ul>
+            {related.matches.map((match) => (
+              <li key={match.email_id}>
+                <Link to={`/cases/${encodeURIComponent(match.email_id)}`}>
+                  {match.subject || match.email_id}
+                </Link>{" "}
+                <span className="muted small">{match.status}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
       {error ? <p className="muted">{error}</p> : null}
       {reviewed && row.review ? (
         <p className="muted">
@@ -278,10 +371,19 @@ export function CasePage() {
             {comparisons.map((item) => (
               <div key={item.field} style={{ display: "contents" }}>
                 <div>{item.field.replaceAll("_", " ")}</div>
-                <div>{item.si_value ?? "-"}</div>
-                <div>{item.bl_value ?? "-"}</div>
                 <div>
-                  {item.match === true ? "Match" : item.match === false ? "Differ" : "Unsure"}
+                  <div className="cell-value">{item.si_value ?? "-"}</div>
+                  {renderEvidence(item.si_evidence)}
+                </div>
+                <div>
+                  <div className="cell-value">{item.bl_value ?? "-"}</div>
+                  {renderEvidence(item.bl_evidence)}
+                </div>
+                <div>
+                  <div>
+                    {item.match === true ? "Match" : item.match === false ? "Differ" : "Unsure"}
+                  </div>
+                  {item.note ? <div className="evidence-line">{item.note}</div> : null}
                 </div>
               </div>
             ))}

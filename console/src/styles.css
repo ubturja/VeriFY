@@ -291,6 +291,17 @@ a {
   padding-left: 20px;
 }
 
+.cell-value {
+  font-weight: 500;
+}
+
+.evidence-line {
+  color: var(--ink-soft);
+  font-size: 12px;
+  margin-top: 4px;
+  overflow-wrap: anywhere;
+}
+
 .stack {
   display: flex;
   flex-direction: column;
@@ -359,6 +370,114 @@ a {
   display: flex;
   gap: 8px;
   align-items: center;
+}
+
+.login-shell {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: var(--paper);
+}
+
+.login-card {
+  width: 100%;
+  max-width: 420px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 32px 32px 28px;
+  box-shadow: var(--shadow);
+}
+
+.login-card h1 {
+  margin: 0 0 6px;
+  font-size: 22px;
+  font-weight: 600;
+}
+
+.login-card .muted.small {
+  font-size: 12px;
+  margin-top: 12px;
+}
+
+.login-error {
+  color: var(--danger);
+}
+
+.link {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
+.mailbox-card {
+  margin-top: auto;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.mailbox-card .muted.small {
+  color: var(--sidebar-muted);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.mailbox-email {
+  color: var(--sidebar-text);
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+.btn.small {
+  padding: 6px 10px;
+  font-size: 12px;
+  align-self: flex-start;
+}
+
+.small {
+  font-size: 12px;
+}
+
+.muted {
+  color: var(--ink-soft);
+}
+
+.reply-panel {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 16px 18px;
+  margin: 8px 0 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.reply-head {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-weight: 500;
+}
+
+.reply-panel textarea {
+  min-height: 180px;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 13px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--paper);
+}
+
+.related ul {
+  padding-left: 20px;
+  margin: 8px 0 24px;
 }
 
 @media (max-width: 900px) {

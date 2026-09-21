@@ -8,6 +8,12 @@ export const COMPARE_FIELDS = [
   "gross_weight_kg",
 ] as const;
 
+export type FieldEvidence = {
+  attachment: string;
+  locator: string;
+  snippet?: string;
+};
+
 export type ReviewStamp = {
   action: string;
   at: string;
@@ -43,6 +49,10 @@ export type CaseRow = {
       si_value: string | null;
       bl_value: string | null;
       match: boolean | null;
+      confidence?: number;
+      note?: string | null;
+      si_evidence?: FieldEvidence | null;
+      bl_evidence?: FieldEvidence | null;
     }[];
     notes: string[];
   };
@@ -62,14 +72,27 @@ export type SubmitAttachment = {
   content_base64?: string;
 };
 
+import { getStoredToken } from "./auth";
+
 const explicit = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, "");
 const base = explicit || "/api";
 
+export class ApiError extends Error {
+  status: number;
+  constructor(message: string, status: number) {
+    super(message);
+    this.status = status;
+  }
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${base}${path}`, {
-    headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
-    ...init,
-  });
+  const token = getStoredToken();
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    ...((init?.headers as Record<string, string>) ?? {}),
+  };
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+  const response = await fetch(`${base}${path}`, { ...init, headers });
   if (!response.ok) {
     let message = `${response.status} ${response.statusText}`;
     try {
@@ -80,20 +103,46 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     } catch {
       /* keep status text */
     }
-    throw new Error(message);
+    if (response.status === 401 && typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("verify:unauthorized"));
+    }
+    throw new ApiError(message, response.status);
   }
+  if (response.status === 204) return undefined as T;
   return response.json() as Promise<T>;
 }
+
+export type MailboxSession = {
+  token: string;
+  email: string;
+};
+
+export type MailboxProfile = {
+  email: string;
+  imap_ready: boolean;
+  last_login_at: string | null;
+  poll: {
+    last_at?: string | null;
+    ingested?: number;
+    failed?: number;
+    error?: string | null;
+  };
+};
 
 export const api = {
   health: () =>
     request<{
       status: string;
+      service: string;
+      env: string;
       llm: string;
-      cases: number;
-      imap_ready: boolean;
+      mailboxes: number;
       imap_autopoll: boolean;
     }>("/health"),
+  login: (body: { email: string; app_password: string }) =>
+    request<MailboxSession>("/auth/login", { method: "POST", body: JSON.stringify(body) }),
+  logout: () => request<{ ok: boolean }>("/auth/logout", { method: "POST" }),
+  me: () => request<MailboxProfile>("/auth/me"),
   cases: (query = "") => request<CaseRow[]>(`/cases${query}`),
   case: (id: string) => request<CaseRow>(`/cases/${encodeURIComponent(id)}`),
   replay: () => request<{ ingested: number }>("/inbox/replay", { method: "POST" }),
@@ -101,7 +150,7 @@ export const api = {
     request<{ ingested: number; mailbox: string }>("/inbox/imap", { method: "POST" }),
   submit: (body: Record<string, unknown>) =>
     request<CaseRow>("/inbox/submit", { method: "POST", body: JSON.stringify(body) }),
-  confirm: (id: string, body: { reviewer?: string; note?: string } = {}) =>
+  confirm: (id: string, body: { note?: string } = {}) =>
     request<CaseRow>(`/cases/${encodeURIComponent(id)}/confirm`, {
       method: "POST",
       body: JSON.stringify(body),
@@ -109,7 +158,6 @@ export const api = {
   correct: (
     id: string,
     body: {
-      reviewer?: string;
       note?: string;
       category?: string;
       status?: string;
@@ -123,6 +171,15 @@ export const api = {
     }),
   retry: (id: string) =>
     request<CaseRow>(`/cases/${encodeURIComponent(id)}/retry`, { method: "POST" }),
+  replyDraft: (id: string) =>
+    request<{ subject: string; body: string; to: string }>(
+      `/cases/${encodeURIComponent(id)}/reply-draft`,
+    ),
+  related: (id: string) =>
+    request<{
+      shipment_id: string | null;
+      matches: { email_id: string; subject: string; status: string; from: string }[];
+    }>(`/cases/${encodeURIComponent(id)}/related`),
   audit: () => request<AuditEvent[]>("/audit"),
   metrics: () =>
     request<{
