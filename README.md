@@ -147,4 +147,4 @@ Every runtime setting is an environment variable. See `.env.example`. In the hac
 
 ## License
 
-Proprietary to the We Suffer Together hackathon team unless otherwise agreed.
+Proprietary to Upanta Baidya and the "We Suffer Together" hackathon team unless otherwise agreed.
