@@ -94,9 +94,12 @@ export function AppShell() {
 
       <div
         className="absolute left-0 top-0 h-full z-30 sidebar-slide flex-shrink-0"
+        inert={!sidebarOpen}
+        aria-hidden={!sidebarOpen}
         style={{
           transform: sidebarOpen ? "translateX(0)" : "translateX(-100%)",
           opacity: sidebarOpen ? 1 : 0,
+          pointerEvents: sidebarOpen ? "auto" : "none",
           width: "264px",
         }}
       >
@@ -198,29 +201,36 @@ export function AppShell() {
         </div>
       </div>
 
-      {!isWelcome ? (
-        <button
-          type="button"
-          onClick={() => setSidebarOpen((open) => !open)}
-          className="toggle-btn absolute z-40 w-12 h-12 rounded-full flex items-center justify-center cursor-pointer"
-          style={{ left: sidebarOpen ? "276px" : "20px", top: "24px" }}
-          aria-label="Toggle navigation"
-        >
-          <span
-            className="text-[#f0ebe9] text-xl transition-transform duration-300"
+      <div className="flex-1 h-full min-w-0 relative overflow-y-auto">
+        {!isWelcome ? (
+          <div
+            className="sticky top-0 z-40 flex h-16 items-center"
             style={{
-              transform: sidebarOpen ? "rotate(90deg)" : "rotate(0deg)",
-              display: "block",
-              lineHeight: 1,
+              paddingLeft: sidebarOpen ? 280 : 20,
+              background: "linear-gradient(to bottom, rgba(13,10,9,0.92) 55%, transparent)",
             }}
           >
-            {sidebarOpen ? "×" : "≡"}
-          </span>
-        </button>
-      ) : null}
-
-      <div className="flex-1 h-full relative overflow-y-auto">
-        <main className={`h-full relative z-10 ${isWelcome ? "" : "p-6 md:p-8 pt-20"}`}>
+            <button
+              type="button"
+              onClick={() => setSidebarOpen((open) => !open)}
+              className="toggle-btn w-12 h-12 rounded-full flex items-center justify-center cursor-pointer"
+              aria-label="Toggle navigation"
+              aria-expanded={sidebarOpen}
+            >
+              <span
+                className="text-[#f0ebe9] text-xl transition-transform duration-300"
+                style={{
+                  transform: sidebarOpen ? "rotate(90deg)" : "rotate(0deg)",
+                  display: "block",
+                  lineHeight: 1,
+                }}
+              >
+                {sidebarOpen ? "×" : "≡"}
+              </span>
+            </button>
+          </div>
+        ) : null}
+        <main className={`relative z-10 ${isWelcome ? "h-full" : "px-6 md:px-8 pb-10"}`}>
           <Outlet key={location.pathname} />
         </main>
       </div>

@@ -32,7 +32,7 @@ export function LoginPage() {
   }
 
   return (
-    <div className="login-shell">
+    <div className="login-shell mesh-bg">
       <section className="login-card">
         <div className="brand" style={{ marginBottom: 20 }}>
           <strong>{t("app.name")}</strong>

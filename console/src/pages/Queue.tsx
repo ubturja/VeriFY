@@ -81,7 +81,7 @@ export function QueuePage() {
         
         <div className="flex flex-wrap gap-2 items-center">
           <input
-            className="text-xs font-mono px-3 py-1.5 rounded-full transition-all focus:outline-none"
+            className="text-xs font-mono px-3 py-1.5 rounded-full transition-all focus:outline-none min-w-56"
             style={{ background: "rgba(28,22,21,0.8)", border: "1px solid rgba(142,59,49,0.25)", color: "#e5cf80" }}
             value={q}
             onChange={(e) => setQ(e.target.value)}

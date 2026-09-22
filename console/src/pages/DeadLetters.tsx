@@ -44,6 +44,7 @@ export function DeadLettersPage() {
       {rows.length === 0 ? (
         <p className="empty">{t("dead.empty")}</p>
       ) : (
+        <div className="overflow-x-auto">
         <table className="table">
           <thead>
             <tr>
@@ -68,6 +69,7 @@ export function DeadLettersPage() {
             ))}
           </tbody>
         </table>
+        </div>
       )}
     </section>
   );

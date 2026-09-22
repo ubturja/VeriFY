@@ -2,8 +2,9 @@
 
 The few-shot store remembers an exact pair. This model is fit on those pairs
 and written next to them, so the next pipeline run loads the new weights
-without a separate deploy step. It only votes inside the gray band, and only
-after an exact correction has already been checked.
+without a separate deploy step. It only speaks inside the gray band, after an
+exact correction has already been checked, and its note is a suggestion.
+Only that exact correction may turn a mismatch into a match.
 """
 
 from __future__ import annotations

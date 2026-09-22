@@ -48,11 +48,7 @@ uv --version
 node --version   # v22 or newer
 ```
 
-Enable Corepack so the console uses the pinned pnpm version:
-
-```bash
-corepack enable
-```
+The console installs with npm. CI uses Node 22 and `npm ci`.
 
 ## Local setup
 
@@ -66,9 +62,9 @@ cp .env.example .env
 
 Edit `.env`:
 
-- `VERIFY_DATA_DIR` should resolve to `sdoc-hackathon-bundle` (from this folder that is `../../sdoc-hackathon-bundle` if the repo lives at `Dev/VeriFY`).
-- Put `GEMINI_API_KEY` and `GROQ_API_KEY` in `.env` only. Never commit them.
-- Set `IMAP_USERNAME=wesuffertogether22@gmail.com` and add a Gmail app password when you want live mail.
+- `VERIFY_DATA_DIR` should resolve to `sdoc-hackathon-bundle`. From this folder, next to the bundle, that is `../sdoc-hackathon-bundle`.
+- Put `GEMINI_API_KEY` and `GROQ_API_KEY` in `.env` only. Never commit them. Those keys are for live mail. `make eval` does not call them.
+- Leave `IMAP_USERNAME` and `IMAP_APP_PASSWORD` empty. Sign in from the console with any Gmail address and a Gmail app password. The API checks that password with IMAP and keeps the mailbox separate from every other sign-in.
 
 Install Python 3.12 (uv downloads it) and dependencies:
 
@@ -79,7 +75,7 @@ uv sync
 cd ..
 ```
 
-The console uses Node 22. Enable Corepack if you can (`corepack enable`), then `pnpm install`. If Corepack cannot write to `/usr/bin`, use npm:
+The console uses Node 22 and npm:
 
 ```bash
 cd console
@@ -106,17 +102,27 @@ make console
 - API: http://localhost:8000/docs
 - Console: http://localhost:5173
 
+Sign in on the console. `/` is the welcome screen. The queue is at `/queue`. The mailbox owner is a supervisor and can switch the session to reviewer or auditor. An auditor can read. A reviewer can confirm, correct, and retry. A supervisor can also edit policy and open the webhook log and the dead-letter list.
+
 ## Process the sample inbox
 
 ```bash
 make eval
 ```
 
-This reads every email under `VERIFY_DATA_DIR`, writes `artifacts/submission.json` in the required scoreboard shape, and, if `VERIFY_GROUND_TRUTH` is set, prints a local score. Ground truth is never committed.
+This reads every email under `VERIFY_DATA_DIR` with the rules pipeline only. API keys in `.env` are ignored. It writes `artifacts/submission.json` in the required scoreboard shape, and, if `VERIFY_GROUND_TRUTH` is set, prints a local score. Ground truth is never committed.
+
+Local scans need Tesseract with English, Chinese, and Malay:
+
+```bash
+brew install tesseract tesseract-lang
+```
 
 You can also drop a new email into the console with **Submit email**. Organizers can test with messages this repository has never seen.
 
-On a case page, **Confirm** accepts the current verdict. It does not change category, status, or defect fields. **Correct** is the human override: it rewrites those scoreboard fields and sets `decided_by` to `human`. **Retry** re-runs the pipeline and clears that stamp. Both actions are written to the Audit log. **Poll mailbox** on the queue reads `wesuffertogether22@gmail.com` over IMAP once `IMAP_APP_PASSWORD` is set. The API also polls that mailbox in the background every `IMAP_POLL_SECONDS`.
+On a case page, **Confirm** accepts the current verdict. It does not change category, status, or defect fields. **Correct** is the human override: it rewrites those scoreboard fields and sets `decided_by` to `human`. **Retry** re-runs the pipeline and clears that stamp. Each action is written to the Audit log. A correction also stores the party-name pair and refits a small local model for that mailbox. The model can suggest that two names are the same. It does not change a mismatch into a match. Only the exact stored correction does that.
+
+**Poll mailbox** reads the signed-in Gmail account. The API also polls that mailbox in the background every `IMAP_POLL_SECONDS`. Ingest goes through a file-backed job queue. A job that still fails after its retries lands on the dead-letter page.
 
 **Submit email** accepts uploaded files (base64) as well as paths under `VERIFY_DATA_DIR`, so organizers can test with mail this repository has never seen.
 
@@ -126,7 +132,7 @@ Azure for Students and many personal accounts cannot grant the credits this demo
 
 See [docs/cloud.md](docs/cloud.md). `render.yaml` is the Render Blueprint.
 
-Demo mailbox: `wesuffertogether22@gmail.com` (IMAP). Put a Gmail app password in `IMAP_APP_PASSWORD` locally or in the host's secret env. Never commit it.
+There is no built-in demo mailbox. Each reviewer signs in with their own Gmail address and app password. Never commit that password.
 
 ## Configuration
 

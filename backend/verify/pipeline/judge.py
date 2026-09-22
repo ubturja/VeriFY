@@ -62,8 +62,9 @@ async def resolve_gray_band(
 ) -> list[str]:
     """Rewrite gray-band party rows in place.
 
-    Returns the fields a stored correction, the local model, or the LLM
-    flipped from MISMATCH to MATCH.
+    Returns the fields an exact stored correction or the LLM flipped from
+    MISMATCH to MATCH. The local party model may annotate a row. It never
+    changes a mismatch into a match.
     """
     flipped: list[str] = []
     for item in comparisons:
@@ -83,13 +84,8 @@ async def resolve_gray_band(
             decision = party_model.predict(item.si_value, item.bl_value)
             if decision is not None:
                 stamp = f"@{decision.version}"
-                if decision.same:
-                    item.match = True
-                    item.confidence = max(item.confidence, decision.confidence)
-                    item.note = f"local-model:same-entity{stamp}"
-                    flipped.append(item.field)
-                else:
-                    item.note = f"local-model:distinct{stamp}"
+                kind = "suggest-same" if decision.same else "suggest-distinct"
+                item.note = f"party-model:{kind}{stamp}"
                 continue
         if llm is None:
             continue

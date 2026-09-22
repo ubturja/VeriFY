@@ -101,9 +101,9 @@ async def test_gray_band_uses_the_trained_model_without_an_llm(tmp_path: Path):
         confidence=0.85,
     )
     flipped = await resolve_gray_band([gray, outside], llm=None, party_model=model)
-    assert flipped == ["shipper"]
-    assert gray.match is True
-    assert gray.note is not None and gray.note.startswith("local-model:same-entity@")
+    assert flipped == []
+    assert gray.match is False
+    assert gray.note is not None and gray.note.startswith("party-model:suggest-same@")
     assert outside.match is False
     assert outside.note is None
 

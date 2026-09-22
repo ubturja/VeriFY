@@ -8,6 +8,13 @@ const CATEGORIES = ["BL_COMPARISON", "SI_REQUEST", "INVOICE_QUERY", "GENERAL", "
 const STATUSES = ["OK", "MISMATCH", "NEEDS_REVIEW"] as const;
 const REASONS = ["wrong_doc_type", "missing_attachment", "unreadable", "missing_value"] as const;
 
+function formatNote(note: string): string {
+  return note.replace(/fuzzy:(\d+(?:\.\d+)?)/g, (_match, raw: string) => {
+    const value = Number(raw);
+    return Number.isFinite(value) ? `fuzzy:${value.toFixed(1)}` : _match;
+  });
+}
+
 function attachmentLeaf(path: string): string {
   const cleaned = path.replaceAll("\\", "/");
   const parts = cleaned.split("/");
@@ -148,6 +155,15 @@ export function CasePage() {
   const corrected = row.review?.action === "correct";
   const reviewed = confirmed || corrected;
 
+  const statusTone =
+    row.result.status === "OK"
+      ? { color: "#7ecfa0", bg: "rgba(126,207,160,0.12)", border: "rgba(126,207,160,0.35)" }
+      : row.result.status === "MISMATCH"
+        ? { color: "#e5997e", bg: "rgba(229,153,126,0.12)", border: "rgba(229,153,126,0.35)" }
+        : row.result.status === "NEEDS_REVIEW"
+          ? { color: "#e5cf80", bg: "rgba(229,207,128,0.12)", border: "rgba(229,207,128,0.35)" }
+          : { color: "#8a7470", bg: "rgba(138,116,112,0.12)", border: "rgba(138,116,112,0.35)" };
+
   const ok = comparisons.filter((c) => c.match === true).length;
   const mismatch = comparisons.filter((c) => c.match === false).length;
   const unsure = comparisons.filter((c) => c.match == null).length;
@@ -168,9 +184,9 @@ export function CasePage() {
       <div className="flex flex-wrap items-center gap-3">
         <span
           className="text-xs font-mono px-2 py-0.5 rounded-sm font-medium tracking-wide"
-          style={{ background: "rgba(229,153,126,0.12)", border: "1px solid rgba(229,153,126,0.3)", color: "#e5cf80" }}
+          style={{ background: statusTone.bg, border: `1px solid ${statusTone.border}`, color: statusTone.color }}
         >
-          {row.result.status}
+          {t(`status.${row.result.status}`, { defaultValue: row.result.status })}
         </span>
         {row.result.review_reason && (
           <span
@@ -256,9 +272,9 @@ export function CasePage() {
 
       {related && related.timeline.length ? (
         <section className="related">
-          <h2 style={{ fontSize: 16, fontWeight: 600 }}>
-            {t("case.timeline")}{" "}
-            <span className="muted small">({related.shipment_id})</span>
+          <h2 className="text-base font-semibold break-words">
+            {t("case.timeline")}
+            <span className="muted small block font-normal">({related.shipment_id})</span>
           </h2>
           <ul>
             {related.timeline.map((item) => (
@@ -283,9 +299,9 @@ export function CasePage() {
       ) : null}
       {related && related.matches.length ? (
         <section className="related">
-          <h2 style={{ fontSize: 16, fontWeight: 600 }}>
-            {t("case.related")}{" "}
-            <span className="muted small">({related.shipment_id})</span>
+          <h2 className="text-base font-semibold break-words">
+            {t("case.related")}
+            <span className="muted small block font-normal">({related.shipment_id})</span>
           </h2>
           <ul>
             {related.matches.map((match) => (
@@ -314,7 +330,7 @@ export function CasePage() {
         </div>
       ) : null}
 
-      {showCorrect ? (
+      {showCorrect && !readOnly ? (
         <form
           className="correct-panel"
           onSubmit={(event) => {
@@ -393,7 +409,7 @@ export function CasePage() {
             </button>
           </div>
         </form>
-      ) : !reviewed ? (
+      ) : !reviewed && !readOnly ? (
         <div className="card-glass rounded-xl p-5 space-y-3">
           <p className="text-xs font-mono text-[#8a7470] uppercase tracking-wide">{t("case.note")}</p>
           <input
@@ -434,7 +450,8 @@ export function CasePage() {
 
           <h2 style={{ fontSize: 16, fontWeight: 600 }}>{t("case.fields")}</h2>
 
-          <div className="card-glass rounded-xl overflow-hidden">
+          <div className="card-glass rounded-xl overflow-x-auto">
+            <div className="min-w-[40rem]">
             <div className="px-5 py-3 border-b border-[rgba(142,59,49,0.2)] grid grid-cols-12 text-xs font-mono text-[#8a7470] uppercase tracking-wide">
               <div className="col-span-3">Field</div>
               <div className="col-span-3">{t("case.si")}</div>
@@ -468,12 +485,13 @@ export function CasePage() {
                     {r.match === false && <span className="font-mono text-[#e5997e] font-semibold">⚠ Differs</span>}
                     {r.match == null && <span className="font-mono text-[#e5cf80]">— Unsure</span>}
                     {r.note ? (
-                      <p className="text-[11px] font-mono text-[#8a7470] mt-1 break-words">{r.note}</p>
+                      <p className="text-[11px] font-mono text-[#8a7470] mt-1 break-words">{formatNote(r.note)}</p>
                     ) : null}
                   </div>
                 </div>
               );
             })}
+            </div>
           </div>
         </div>
       )}

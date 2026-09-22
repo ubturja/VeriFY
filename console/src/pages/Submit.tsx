@@ -66,10 +66,11 @@ export function SubmitPage() {
           {error ? <p className="text-[#e5997e] font-mono text-xs">{error}</p> : null}
 
           <div className="space-y-2">
-            <label className="text-xs font-mono text-[#8a7470] uppercase tracking-wide block">
+            <label htmlFor="submit-sender" className="text-xs font-mono text-[#8a7470] uppercase tracking-wide block">
               {t("submit.sender")}
             </label>
             <input
+              id="submit-sender"
               className="w-full text-sm px-4 py-3 rounded-lg transition-all focus:outline-none"
               style={{ background: "rgba(13,10,9,0.6)", border: "1px solid rgba(142,59,49,0.15)", color: "#f0ebe9" }}
               value={sender}
@@ -79,10 +80,11 @@ export function SubmitPage() {
           </div>
 
           <div className="space-y-2">
-            <label className="text-xs font-mono text-[#8a7470] uppercase tracking-wide block">
+            <label htmlFor="submit-subject" className="text-xs font-mono text-[#8a7470] uppercase tracking-wide block">
               {t("submit.subject")}
             </label>
             <input
+              id="submit-subject"
               className="w-full text-sm px-4 py-3 rounded-lg transition-all focus:outline-none"
               style={{ background: "rgba(13,10,9,0.6)", border: "1px solid rgba(142,59,49,0.15)", color: "#f0ebe9" }}
               value={subject}
@@ -93,10 +95,11 @@ export function SubmitPage() {
           </div>
 
           <div className="space-y-2">
-            <label className="text-xs font-mono text-[#8a7470] uppercase tracking-wide block">
+            <label htmlFor="submit-body" className="text-xs font-mono text-[#8a7470] uppercase tracking-wide block">
               {t("submit.body")}
             </label>
             <textarea
+              id="submit-body"
               className="w-full text-sm px-4 py-3 rounded-lg transition-all focus:outline-none min-h-[160px]"
               style={{ background: "rgba(13,10,9,0.6)", border: "1px solid rgba(142,59,49,0.15)", color: "#f0ebe9", resize: "vertical" }}
               value={body}
@@ -106,10 +109,11 @@ export function SubmitPage() {
           </div>
 
           <div className="space-y-2">
-            <label className="text-xs font-mono text-[#8a7470] uppercase tracking-wide block">
+            <label htmlFor="submit-files" className="text-xs font-mono text-[#8a7470] uppercase tracking-wide block">
               {t("submit.files")}
             </label>
             <input
+              id="submit-files"
               type="file"
               multiple
               className="w-full text-sm px-4 py-3 rounded-lg transition-all focus:outline-none cursor-pointer"
@@ -120,10 +124,11 @@ export function SubmitPage() {
           </div>
 
           <div className="space-y-2">
-            <label className="text-xs font-mono text-[#8a7470] uppercase tracking-wide block">
+            <label htmlFor="submit-paths" className="text-xs font-mono text-[#8a7470] uppercase tracking-wide block">
               {t("submit.paths")}
             </label>
             <textarea
+              id="submit-paths"
               className="w-full text-sm px-4 py-3 rounded-lg transition-all focus:outline-none min-h-[100px]"
               style={{ background: "rgba(13,10,9,0.6)", border: "1px solid rgba(142,59,49,0.15)", color: "#f0ebe9", resize: "vertical" }}
               value={paths}

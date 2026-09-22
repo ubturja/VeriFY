@@ -25,6 +25,7 @@ export function WebhooksPage() {
       {rows.length === 0 ? (
         <p className="empty">{t("webhooks.empty")}</p>
       ) : (
+        <div className="overflow-x-auto">
         <table className="table">
           <thead>
             <tr>
@@ -46,6 +47,7 @@ export function WebhooksPage() {
             ))}
           </tbody>
         </table>
+        </div>
       )}
     </section>
   );

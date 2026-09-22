@@ -5,8 +5,8 @@
 resource "azurerm_servicebus_namespace" "main" {
   count               = var.enable_production_mapping ? 1 : 0
   name                = substr(replace("${var.prefix}-sb", "-", ""), 0, 50)
-  location            = azurerm_resource_group.main.location
-  resource_group_name = azurerm_resource_group.main.name
+  location            = azurerm_resource_group.main[0].location
+  resource_group_name = azurerm_resource_group.main[0].name
   sku                 = "Standard"
   tags = {
     product = "VeriFY"

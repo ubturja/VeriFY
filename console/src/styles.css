@@ -51,6 +51,7 @@ body {
   font-family: var(--font-body);
   background-color: var(--color-surface);
   color: #f0ebe9;
+  color-scheme: dark;
   overflow: hidden;
 }
 
@@ -318,8 +319,8 @@ body {
 }
 
 .empty {
-  padding: 48px 20px;
-  text-align: center;
+  padding: 28px 0;
+  text-align: left;
   color: var(--ink-soft);
 }
 
@@ -405,7 +406,7 @@ body {
 }
 
 .link {
-  color: var(--accent);
+  color: var(--color-gold);
   text-decoration: underline;
 }
 

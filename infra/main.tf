@@ -32,6 +32,7 @@ variable "prefix" {
 }
 
 resource "azurerm_resource_group" "main" {
+  count    = var.enable_production_mapping ? 1 : 0
   name     = "rg-${var.prefix}-dev"
   location = var.location
   tags = {

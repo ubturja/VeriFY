@@ -8,7 +8,6 @@ from pathlib import Path
 from verify.config import get_settings
 from verify.eval.score import score_submission
 from verify.pipeline.orchestrator import run_pipeline
-from verify.providers.llm.factory import NullLLMProvider, build_llm
 from verify.providers.mail.hackathon import HackathonMailSource
 
 
@@ -17,14 +16,11 @@ async def evaluate() -> dict:
     data_dir = settings.data_dir.resolve()
     source = HackathonMailSource(settings.inbox_url or data_dir)
 
-    llm = build_llm(settings)
-    if isinstance(llm, NullLLMProvider):
-        llm = None
-
+    # The official scoreboard is rules-only. Live mail is the path that may call a model.
     submission: dict = {}
     cases: list[dict] = []
     for email in source.emails():
-        result = await run_pipeline(email, source.read_bytes, llm=llm)
+        result = await run_pipeline(email, source.read_bytes, llm=None)
         submission[email.email_id] = result.to_submission()
         cases.append(
             {

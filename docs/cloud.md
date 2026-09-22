@@ -11,9 +11,9 @@ Azure for Students and many personal Microsoft accounts do not grant the credits
 | Secrets | Render / Cloudflare environment variables | Key Vault |
 | Postgres (optional) | [Neon](https://neon.tech) free project | Azure Database for PostgreSQL |
 | Blobs | Local disk on the API container | Azure Blob Storage |
-| Queue | In-memory (single replica) | Service Bus |
-| LLM | Gemini primary, Groq fallback | Same interface, Azure OpenAI later |
-| Mail | Gmail IMAP (`wesuffertogether22@gmail.com`) | Microsoft Graph |
+| Queue | File job queue with dead letters | Service Bus |
+| LLM | Rules for the scoreboard. Gemini, then Groq, for live mail | Same interface, Azure OpenAI later |
+| Mail | The Gmail account that signed in | Microsoft Graph |
 
 Render's free Web Service does not require an Azure or AWS subscription. It runs the existing `backend/Dockerfile`, sleeps after idle time, and wakes on the first request. That is enough for judges to open a URL. Cloudflare Pages is the same idea for the React console and also has a no-card free tier.
 
@@ -26,9 +26,9 @@ Oracle Cloud Always Free and Fly.io need a payment card even when the bill is ze
 3. Set these secret env vars in the Render dashboard (never commit them):
    - `GEMINI_API_KEY`
    - `GROQ_API_KEY`
-   - `IMAP_APP_PASSWORD` (Gmail app password for `wesuffertogether22@gmail.com`)
+   - `IMAP_APP_PASSWORD` only if you want one mailbox registered at startup. Reviewers otherwise sign in with their own Gmail app password.
    - `VERIFY_CORS_ORIGINS` (the console URL, comma-separated)
-4. `VERIFY_DATA_DIR` on a free instance will not contain the private hackathon bundle. Judges can **Submit email** with attached files. Local eval remains the scoring path.
+4. `VERIFY_DATA_DIR` on a free instance will not contain the private hackathon bundle. Judges can **Submit email** with attached files. Local `make eval` is the scoring path, and it stays on the rules pipeline.
 
 The free disk is ephemeral. Confirm and Correct actions survive a process restart on the same instance via `VERIFY_STATE_PATH` (JSON or SQLite). They are lost if Render recycles the filesystem. Replay the inbox, or attach Neon later, if a longer-lived demo is needed.
 
